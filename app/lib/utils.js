@@ -1,11 +1,15 @@
-import dayjs from 'dayjs';
+
 
 export const formatCurrency = (amount) => {
-  return (amount / 100).toLocaleString('en-US', {
+  return new Intl.NumberFormat('en-BD', {
     style: 'currency',
-    currency: 'BDT', // Change currency to BDT for Bangladeshi Taka
-  });
+    currency: 'BDT',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 };
+
+// This will display: ৳50.00, ৳123.45 etc.
 
 
 export const formatQuantity = (quantity) => {
@@ -14,10 +18,7 @@ export const formatQuantity = (quantity) => {
 };
 
 export const formatPrintCurrency = (amount) => {
-  return (amount / 100).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return amount.toFixed(2);
 };
 
 

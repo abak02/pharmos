@@ -15,6 +15,13 @@ export default function CreateInvoice() {
     const [inputValue, setInputValue] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
     const [selectedMedicines, setSelectedMedicines] = useState([]);
+    const [priceData, setPriceData] = useState({
+        totalPrice: 0,
+        discountedPrice: 0,
+        discountPercentage: 0,
+        givenAmount: 0,
+        changeAmount: 0
+    });
 
     const handleCustomerChange = useDebouncedCallback(async (term) => {
         if (term) {
@@ -36,9 +43,21 @@ export default function CreateInvoice() {
         setSelectedMedicines(medicines);
     };
 
+    const handlePriceUpdate = (data) => {
+        setPriceData(data);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
+        
+        // Add the calculated price data to formData
+        formData.append('totalPrice', priceData.totalPrice.toString());
+        formData.append('discountedPrice', priceData.discountedPrice.toString());
+        formData.append('discountPercentage', priceData.discountPercentage.toString());
+        formData.append('givenAmount', priceData.givenAmount.toString());
+        formData.append('changeAmount', priceData.changeAmount.toString());
+        
         await createInvoice(formData, selectedMedicines);
     };
 
@@ -96,11 +115,9 @@ export default function CreateInvoice() {
                             className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
                         />
                         <PhoneIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
-
-                        
                     </div>
                 </div>
-                <MedicineForm onAddMedicine={handleAddMedicine} />
+                <MedicineForm onAddMedicine={handleAddMedicine} onPriceUpdate={handlePriceUpdate} />
                 <div className="mt-6 flex justify-end gap-4">
                     <Link
                         href="/dashboard/invoices"
@@ -113,7 +130,6 @@ export default function CreateInvoice() {
                     <PlusIcon className="h-5 w-5 mr-2" />
                         Create Invoice
                     </button>
-                    
                 </div>
             </div>
         </form>

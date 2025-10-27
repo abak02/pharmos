@@ -3,22 +3,35 @@ import { sql } from '@vercel/postgres';
 import { unstable_noStore as noStore } from 'next/cache'
 import { formatCurrency } from './utils';
 
+
+// Define constants at the top
+const ITEMS_PER_PAGE = 40;
+const CUSTOMER_PER_PAGE = 10;
+const INVOICES_PER_PAGE = 15;
+const SHOP_PER_PAGE = 40;
+
+
 export async function fetchMedicine() {
   noStore();
   try {
     const data = await sql`
         SELECT
-          id,
-          brandname,
-          genericname,
-          nameofthemanufacturer,
-          price
-        FROM medicinelist
-        ORDER BY brandname ASC
-        
+          ml.id,
+          ml.brandname,
+          ml.genericname,
+          m.nameofthemanufacturer,
+          ml.price,
+          COALESCE(si.quantity, 0) as quantity
+        FROM medicinelist ml
+        LEFT JOIN manufacturerlist m ON ml.manufacturer_id = m.manufacturer_id
+        LEFT JOIN shopinventory si ON ml.id = si.medicine_id
+        ORDER BY ml.brandname ASC
       `;
 
-    const medicine = data.rows;
+    const medicine = data.rows.map(med => ({
+      ...med,
+      price: med.price / 100, // convert from cents to taka
+    }));
     return medicine;
   } catch (err) {
     console.error('Database Error:', err);
@@ -31,118 +44,318 @@ export async function fetchMedicineById(id) {
   try {
     const data = await sql`
         SELECT
-          id,
-          brandname,
-          genericname,
-          nameofthemanufacturer,
-          dosagedescription,
-          price
-        FROM medicinelist
-        WHERE id = ${id}
-        
+          ml.id,
+          ml.brandname,
+          ml.genericname,
+          m.nameofthemanufacturer,
+          ml.dosagedescription,
+          ml.price,
+          COALESCE(si.quantity, 0) as quantity
+        FROM medicinelist ml
+        LEFT JOIN manufacturerlist m ON ml.manufacturer_id = m.manufacturer_id
+        LEFT JOIN shopinventory si ON ml.id = si.medicine_id
+        WHERE ml.id = ${id}
       `;
 
     const medicine = data.rows[0];
     return {
-    ...medicine,
-    price: medicine.price / 100, // convert to taka before showing
-  };
+      ...medicine,
+      price: medicine.price / 100, // convert from cents to taka
+    };
   } catch (err) {
     console.error('Database Error:', err);
-    throw new Error('Failed to fetch all medicine.');
+    throw new Error('Failed to fetch medicine by id.');
   }
 }
 
 export async function fetchMedicinePages(query) {
   noStore();
   try {
-    const count = await sql`SELECT COUNT(*)
-      FROM medicinelist
-      
+    
+    
+    const count = await sql`
+      SELECT COUNT(*)
+      FROM medicinelist ml
+      LEFT JOIN manufacturerlist m ON ml.manufacturer_id = m.manufacturer_id
       WHERE
-        brandname ILIKE ${`%${query}%`} OR
-        genericname ILIKE ${`%${query}%`} 
+        ml.brandname ILIKE ${`%${query}%`} OR
+        ml.genericname ILIKE ${`%${query}%`}
     `;
 
+   
+    
     const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
+    
+    
+    return totalPages;
+  } catch (error) {
+    console.error('Database Error Details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack
+    });
+    throw new Error('Failed to fetch total number of medicine pages.');
+  }
+}
+
+export async function fetchFilteredMedicine(query, currentPage) {
+  noStore();
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  try {
+    const medicines = await sql`
+      SELECT
+        ml.id,
+        ml.brandname,
+        ml.genericname,
+        m.nameofthemanufacturer,
+        ml.dosagedescription,
+        ml.price,
+        COALESCE(si.quantity, 0) as quantity
+      FROM medicinelist ml
+      LEFT JOIN manufacturerlist m ON ml.manufacturer_id = m.manufacturer_id
+      LEFT JOIN shopinventory si ON ml.id = si.medicine_id
+      WHERE
+        ml.brandname ILIKE ${`${query}%`} OR
+        ml.genericname ILIKE ${`%${query}%`} 
+      ORDER BY ml.brandname ASC
+      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    `;
+
+    return medicines.rows.map(med => ({
+      ...med,
+      price: med.price / 100, // convert from cents to taka
+    }));
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch medicine list.');
+  }
+}
+
+export async function fetchFilteredMedicinebyBrandName(query, currentPage) {
+  noStore();
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  try {
+    const medicines = await sql`
+      SELECT
+        ml.id,
+        ml.brandname,
+        ml.genericname,
+        m.nameofthemanufacturer,
+        ml.dosagedescription,
+        ml.price
+      FROM medicinelist ml
+      LEFT JOIN manufacturerlist m ON ml.manufacturer_id = m.manufacturer_id
+      WHERE
+        ml.brandname ILIKE ${`${query}%`}
+      ORDER BY ml.brandname ASC
+      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    `;
+
+    return medicines.rows.map(med => ({
+      ...med,
+      price: med.price / 100, // convert from cents to taka
+    }));
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch medicine list by brand name.');
+  }
+}
+
+export async function fetchFilteredMedicineForSuggestion(query) {
+  noStore();
+  try {
+    const medicines = await sql`
+      SELECT
+        ml.id,
+        ml.brandname,
+        ml.dosagedescription,
+        ml.price
+      FROM medicinelist ml
+      WHERE
+        ml.brandname ILIKE ${`${query}%`}
+      ORDER BY ml.brandname ASC
+      LIMIT 20
+    `;
+
+    return medicines.rows.map(med => ({
+      ...med,
+      price: med.price / 100, // convert from cents to taka
+    }));
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch medicine list for suggestion.');
+  }
+}
+
+// Optimized medicine search with stock - now will use indexes
+export async function fetchFilteredMedicineWithStockForSuggestion(query) {
+  noStore();
+  try {
+    const medicines = await sql`
+      SELECT
+        ml.id,
+        ml.brandname,
+        ml.dosagedescription,
+        ml.price,
+        COALESCE(si.quantity, 0) as stock_quantity
+      FROM medicinelist ml
+      LEFT JOIN shopinventory si ON ml.id = si.medicine_id
+      WHERE
+        ml.brandname ILIKE ${`${query}%`}
+      ORDER BY ml.brandname ASC
+      LIMIT 20
+    `;
+
+    return medicines.rows.map(med => ({
+      ...med,
+      price: med.price / 100, // convert from cents to taka
+      stock_quantity: med.stock_quantity || 0,
+    }));
+  } catch (error) {
+    console.error('Database Error:', error);
+    return [];
+  }
+}
+
+// Shop inventory related functions
+
+
+export async function fetchShopPages(query) {
+  noStore();
+  try {
+    const count = await sql`
+      SELECT COUNT(*) 
+      FROM shopinventory si
+      JOIN medicinelist ml ON si.medicine_id = ml.id
+      LEFT JOIN manufacturerlist m ON ml.manufacturer_id = m.manufacturer_id
+      WHERE ml.brandname ILIKE ${`%${query}%`} OR
+            ml.genericname ILIKE ${`%${query}%`}
+    `;
+    const totalPages = Math.ceil(Number(count.rows[0].count) / SHOP_PER_PAGE);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of invoices.');
+    throw new Error('Failed to fetch total number of shop items.');
   }
 }
 
-const ITEMS_PER_PAGE = 40;
-export async function fetchFilteredMedicine(
-
-  query,
-  currentPage,
-) {
+export async function fetchShopMedicines(query, currentPage) {
   noStore();
-  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+  const offset = (currentPage - 1) * SHOP_PER_PAGE;
 
   try {
-    const invoices = await sql`
-      SELECT
-        id,
-        brandname,
-        genericname,
-        nameofthemanufacturer,
-        dosagedescription,
-        price
-      FROM medicinelist
-      WHERE
-        brandname ILIKE ${`%${query}%`} OR
-        genericname ILIKE ${`%${query}%`} 
-      ORDER BY  brandname
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    const data = await sql`
+      SELECT 
+        si.medicine_id,
+        ml.brandname,
+        ml.genericname,
+        m.nameofthemanufacturer,
+        ml.dosagedescription,
+        ml.price,
+        si.quantity
+      FROM shopinventory si
+      JOIN medicinelist ml ON si.medicine_id = ml.id
+      LEFT JOIN manufacturerlist m ON ml.manufacturer_id = m.manufacturer_id
+      WHERE ml.brandname ILIKE ${`%${query}%`} OR
+            ml.genericname ILIKE ${`%${query}%`}
+      ORDER BY ml.brandname ASC
+      LIMIT ${SHOP_PER_PAGE} OFFSET ${offset}
     `;
-
-    return invoices.rows;
+    
+    return data.rows.map(med => ({
+      ...med,
+      price: med.price / 100, // convert from cents to taka
+    }));
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch medicine list.');
+    throw new Error('Failed to fetch shop medicines.');
   }
 }
 
-export async function fetchFilteredMedicinebyBrandName(
-
-  query,
-  currentPage,
-) {
+export async function fetchShopMedicinesById(id) {
   noStore();
-  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-
   try {
-    const invoices = await sql`
-      SELECT
-        id,
-        brandname,
-        genericname,
-        nameofthemanufacturer,
-        dosagedescription,
-        price
-      FROM medicinelist
-      WHERE
-        brandname ILIKE ${`${query}%`}
-      ORDER BY  brandname
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    const data = await sql`
+      SELECT 
+        si.medicine_id,
+        si.quantity
+      FROM shopinventory si
+      WHERE si.medicine_id = ${id}
     `;
 
-    return invoices.rows;
+    const shopMedicine = data.rows[0];
+    return shopMedicine;
+  } catch (err) {
+    console.error('Database Error:', err);
+    throw new Error('Failed to fetch shop medicine.');
+  }
+}
+
+// Manufacturer related functions
+export async function fetchManufacturersWithLowStock() {
+  noStore();
+  try {
+    const data = await sql`
+      SELECT 
+        COALESCE(m.nameofthemanufacturer, 'Unknown') as name,
+        COUNT(*) as low_stock_count,
+        SUM(CASE WHEN si.quantity = 0 THEN 1 ELSE 0 END) as out_of_stock_count
+      FROM shopinventory si
+      INNER JOIN medicinelist ml ON si.medicine_id = ml.id
+      LEFT JOIN manufacturerlist m ON ml.manufacturer_id = m.manufacturer_id
+      WHERE si.quantity <= 10
+      GROUP BY m.nameofthemanufacturer
+      ORDER BY low_stock_count DESC, name ASC
+      LIMIT 50
+    `;
+    
+    return data.rows;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch medicine list.');
+    throw new Error('Failed to fetch manufacturers.');
+  }
+}
+
+export async function fetchLowStockMedicinesByManufacturer(manufacturerName) {
+  noStore();
+  try {
+    const data = await sql`
+      SELECT 
+        ml.id as medicine_id,
+        ml.brandname,
+        ml.genericname,
+        ml.dosagedescription,
+        m.nameofthemanufacturer,
+        ml.price,
+        si.quantity
+      FROM shopinventory si
+      INNER JOIN medicinelist ml ON si.medicine_id = ml.id
+      LEFT JOIN manufacturerlist m ON ml.manufacturer_id = m.manufacturer_id
+      WHERE si.quantity <= 10
+      AND m.nameofthemanufacturer = ${manufacturerName}
+      ORDER BY 
+        si.quantity ASC,
+        ml.brandname ASC
+      LIMIT 100
+    `;
+    
+    return data.rows.map(med => ({
+      ...med,
+      price: med.price / 100, // convert from cents to taka
+    }));
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch medicines by manufacturer.');
   }
 }
 
 
-
-const CUSTOMER_PER_PAGE = 10
 
 export async function fetchCustomerPages(query) {
   noStore();
-  ;
   try {
     const count = await sql`
       SELECT COUNT(*) FROM customers
@@ -159,14 +372,12 @@ export async function fetchCustomerPages(query) {
 }
 
 export async function fetchCustomers() {
-
   try {
     const data = await sql`
       SELECT
         id,
         name
       FROM customers
-      
       ORDER BY name ASC
     `;
 
@@ -195,7 +406,6 @@ export async function fetchCustomer(query) {
     `;
 
     const customers = data.rows;
-    //console.log(customers);
     return customers;
   } catch (err) {
     console.error('Database Error:', err);
@@ -239,76 +449,7 @@ export async function fetchFilteredCustomers(query, currentPage) {
   }
 }
 
-export async function fetchFilteredMedicineForSuggestion(
 
-  query
-) {
-  noStore();
-
-
-  try {
-    const medicines = await sql`
-      SELECT
-        id,
-        brandname,
-        dosagedescription,
-        price
-      FROM medicinelist
-      WHERE
-        brandname ILIKE ${`${query}%`}
-        
-      ORDER BY  brandname
-      LIMIT 20
-    `;
-
-    // Convert price for each medicine
-    const formattedMedicines = medicines.rows.map(med => ({
-      ...med,
-      price: med.price / 100, // convert to taka
-    }));
-
-    return formattedMedicines;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch medicine list.');
-  }
-}
-
-
-
-// Optimized medicine search with stock - now will use indexes
-export async function fetchFilteredMedicineWithStockForSuggestion(query) {
-  noStore();
-  try {
-    const medicines = await sql`
-      SELECT
-        ml.id,
-        ml.brandname,
-        ml.dosagedescription,
-        ml.price,
-        COALESCE(si.quantity, 0) as stock_quantity
-      FROM medicinelist ml
-      LEFT JOIN shopinventory si ON ml.id = si.medicine_id  -- Uses idx_shopinventory_medicine_id
-      WHERE
-        ml.brandname ILIKE ${`${query}%`}  -- Uses idx_medicinelist_brandname
-      ORDER BY ml.brandname  -- Uses the same index for sorting
-      LIMIT 20
-    `;
-
-    return medicines.rows.map(med => ({
-      ...med,
-      price: med.price / 100,
-      stock_quantity: med.stock_quantity || 0,
-    }));
-  } catch (error) {
-    console.error('Database Error:', error);
-    return [];
-  }
-}
-
-
-
-const INVOICES_PER_PAGE = 15;
 export async function fetchInvoicesPages(query) {
   noStore();
   try {
@@ -331,12 +472,7 @@ export async function fetchInvoicesPages(query) {
   }
 }
 
-
-export async function fetchFilteredInvoices(
-
-  query,
-  currentPage
-) {
+export async function fetchFilteredInvoices(query, currentPage) {
   noStore();
   const offset = (currentPage - 1) * INVOICES_PER_PAGE;
 
@@ -361,9 +497,12 @@ export async function fetchFilteredInvoices(
     ORDER BY invoices.date DESC
   LIMIT ${INVOICES_PER_PAGE} OFFSET ${offset}
 `;
-    ;
 
-    return invoices.rows;
+    return invoices.rows.map(invoice => ({
+      ...invoice,
+      amount: invoice.amount / 100, // convert from cents to taka
+      given_amount: invoice.given_amount / 100, // convert from cents to taka
+    }));
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch invoices.');
@@ -382,7 +521,7 @@ export async function fetchLatestInvoices() {
 
     const latestInvoices = data.rows.map((invoice) => ({
       ...invoice,
-      amount: formatCurrency(invoice.amount),
+      amount: invoice.amount/100,
     }));
     return latestInvoices;
   } catch (error) {
@@ -394,9 +533,6 @@ export async function fetchLatestInvoices() {
 export async function fetchCardData() {
   noStore();
   try {
-    // You can probably combine these into a single SQL query
-    // However, we are intentionally splitting them to demonstrate
-    // how to initialize multiple queries in parallel with JS.
     const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
     const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
     const invoiceStatusPromise = sql`SELECT
@@ -412,8 +548,8 @@ export async function fetchCardData() {
 
     const numberOfInvoices = Number(data[0].rows[0].count ?? '0');
     const numberOfCustomers = Number(data[1].rows[0].count ?? '0');
-    const totalPaidInvoices = formatCurrency(data[2].rows[0].paid ?? '0');
-    const totalPendingInvoices = formatCurrency(data[2].rows[0].pending ?? '0');
+    const totalPaidInvoices = formatCurrency(data[2].rows[0].paid/100 ?? '0');
+    const totalPendingInvoices = formatCurrency(data[2].rows[0].pending/100 ?? '0');
 
     return {
       numberOfCustomers,
@@ -426,6 +562,7 @@ export async function fetchCardData() {
     throw new Error('Failed to fetch card data.');
   }
 }
+
 export async function fetchInvoiceById(id) {
   noStore();
   try {
@@ -437,16 +574,17 @@ export async function fetchInvoiceById(id) {
         invoices.status,
         invoices.date,
         invoices.time,
-        invoices.given_amount
-
+        invoices.given_amount,
+        invoices.discounted_amount
       FROM invoices
       WHERE invoices.id = ${id};
     `;
 
     const invoice = data.rows.map((invoice) => ({
       ...invoice,
-      // Convert amount from cents to dollars
-      amount: invoice.amount,
+      amount: invoice.amount / 100, // convert from cents to taka
+      given_amount: invoice.given_amount / 100, // convert from cents to taka
+      discounted_amount: invoice.discounted_amount / 100, // convert from cents to taka
     }));
 
     return invoice[0];
@@ -472,8 +610,7 @@ export async function fetchInvoices() {
 
     const invoices = data.rows.map((invoice) => ({
       ...invoice,
-      // Convert amount from cents to dollars
-      amount: invoice.amount / 100,
+      amount: invoice.amount / 100, // convert from cents to taka
     }));
 
     return invoices;
@@ -483,9 +620,7 @@ export async function fetchInvoices() {
   }
 }
 
-
 export async function fetchCustomerById(id) {
-
   try {
     const data = await sql`
       SELECT
@@ -493,15 +628,14 @@ export async function fetchCustomerById(id) {
         name,
         phone_no
       FROM customers
-      
-      where id = ${id}
+      WHERE id = ${id}
     `;
 
     const customers = data.rows[0];
     return customers;
   } catch (err) {
     console.error('Database Error:', err);
-    throw new Error('Failed to fetch all customers.');
+    throw new Error('Failed to fetch customer by id.');
   }
 }
 
@@ -509,146 +643,26 @@ export async function fetchMedicineByInvoiceID(id) {
   try {
     const data = await sql`
     SELECT 
-    ml.brandname, 
-    ml.dosagedescription, 
-    im.quantity, 
-    im.price_per_unit
-FROM 
-    invoice_medicines AS im
-JOIN 
-    medicinelist AS ml ON im.medicine_id = ml.id
-WHERE 
-    im.invoice_id = ${id};
-
+      ml.brandname, 
+      ml.dosagedescription, 
+      im.quantity, 
+      im.price_per_unit
+    FROM 
+      invoice_medicines AS im
+    JOIN 
+      medicinelist AS ml ON im.medicine_id = ml.id
+    WHERE 
+      im.invoice_id = ${id};
     `;
 
-    const medicinelist = data.rows;
+    const medicinelist = data.rows.map(med => ({
+      ...med,
+      price_per_unit: med.price_per_unit / 100, // convert from cents to taka
+    }));
+    
     return medicinelist;
   } catch (err) {
     console.error('Database Error:', err);
-    throw new Error('Failed to fetch all customers.');
-  }
-}
-
-
-const SHOP_PER_PAGE = 40;
-
-// Fetch total pages for Shop table
-export async function fetchShopPages(query) {
-  noStore();
-  try {
-    const count = await sql`
-      SELECT COUNT(*) 
-      FROM shopinventory 
-      JOIN medicinelist ON shopinventory.medicine_id = medicinelist.id
-      WHERE medicinelist.brandname ILIKE ${'%' + query + '%'}
-         OR medicinelist.genericname ILIKE ${'%' + query + '%'};
-    `;
-    const totalPages = Math.ceil(Number(count.rows[0].count) / SHOP_PER_PAGE);
-    return totalPages;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of shop items.');
-  }
-}
-
-// Fetch paginated medicine info from Shop + MedicineList
-export async function fetchShopMedicines(query, currentPage) {
-  noStore();
-  const offset = (currentPage - 1) * SHOP_PER_PAGE;
-
-  try {
-    const data = await sql`
-      SELECT 
-        shopinventory.medicine_id,
-        medicinelist.brandname,
-        medicinelist.genericname,
-        medicinelist.nameofthemanufacturer,
-        medicinelist.dosagedescription,
-        medicinelist.price,
-        shopinventory.quantity
-      FROM shopinventory
-      JOIN medicinelist ON shopinventory.medicine_id = medicinelist.id
-      WHERE medicinelist.brandname ILIKE ${'%' + query + '%'}
-         OR medicinelist.genericname ILIKE ${'%' + query + '%'}
-      ORDER BY medicinelist.brandname ASC
-      LIMIT ${SHOP_PER_PAGE} OFFSET ${offset};
-    `;
-    return data.rows;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch shop medicines.');
-  }
-}
-
-export async function fetchShopMedicinesById(id) {
-  noStore();
-  try {
-    const data = await sql`
-      SELECT 
-        shopinventory.medicine_id,
-        shopinventory.quantity
-      FROM shopinventory
-      WHERE shopinventory.medicine_id = ${id}
-    `;
-
-    const shopMedicine = data.rows[0];
-    return shopMedicine;
-  } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch shop medicine.');
-  }
-}
-
-// app/lib/data.js
-export async function fetchManufacturersWithLowStock() {
-  noStore();
-  try {
-    const data = await sql`
-      SELECT 
-        COALESCE(m.nameofthemanufacturer, 'Unknown') as name,
-        COUNT(*) as low_stock_count,
-        SUM(CASE WHEN s.quantity = 0 THEN 1 ELSE 0 END) as out_of_stock_count
-      FROM shopinventory s
-      INNER JOIN medicinelist m ON s.medicine_id = m.id
-      WHERE s.quantity <= 10
-      GROUP BY m.nameofthemanufacturer
-      ORDER BY low_stock_count DESC, name ASC
-      LIMIT 50
-    `;
-    
-    return data.rows;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch manufacturers.');
-  }
-}
-
-export async function fetchLowStockMedicinesByManufacturer(manufacturerName) {
-  noStore();
-  try {
-    const data = await sql`
-      SELECT 
-        m.id as medicine_id,
-        m.brandname,
-        m.genericname,
-        m.dosagedescription,
-        m.nameofthemanufacturer,
-        m.price,
-        s.quantity
-      FROM shopinventory s
-      INNER JOIN medicinelist m ON s.medicine_id = m.id
-      WHERE s.quantity <= 10
-      AND m.nameofthemanufacturer = ${manufacturerName}
-      ORDER BY 
-        s.quantity ASC,
-        m.brandname ASC
-      LIMIT 100
-    `;
-    
-    return data.rows;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch medicines by manufacturer.');
+    throw new Error('Failed to fetch medicines by invoice id.');
   }
 }

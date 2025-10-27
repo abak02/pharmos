@@ -14,7 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { PencilIcon } from "@heroicons/react/24/outline";
 
-export default function MedicineForm({ onAddMedicine }) {
+export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
   const [medicines, setMedicines] = useState([]);
   const [showSuggestions, setSuggestions] = useState(false);
   const [price, setPrice] = useState("");
@@ -29,6 +29,19 @@ export default function MedicineForm({ onAddMedicine }) {
   const [givenAmount, setGivenAmount] = useState("");
   const [changeAmount, setChangeAmount] = useState(0);
   const [errors, setErrors] = useState({});
+
+  // Send price updates to parent whenever they change
+  useEffect(() => {
+    if (onPriceUpdate) {
+      onPriceUpdate({
+        totalPrice: parseFloat(totalPrice) || 0,
+        discountedPrice: parseFloat(discountedPrice) || 0,
+        discountPercentage: parseFloat(discount) || 0,
+        givenAmount: parseFloat(givenAmount) || 0,
+        changeAmount: parseFloat(changeAmount) || 0
+      });
+    }
+  }, [totalPrice, discountedPrice, discount, givenAmount, changeAmount, onPriceUpdate]);
 
   const handleSearch = useDebouncedCallback(async (term) => {
     console.log(`Searching ${term}`);
@@ -47,7 +60,6 @@ export default function MedicineForm({ onAddMedicine }) {
     setType(medicine.dosagedescription);
     setId(medicine.id);
     setSuggestions(false);
-    // Clear error when medicine is selected
     if (errors.medicineName) {
       setErrors(prev => ({ ...prev, medicineName: '' }));
     }
@@ -78,9 +90,17 @@ export default function MedicineForm({ onAddMedicine }) {
     }
 
     const priceString = price.toString();
-    const numericPrice = parseFloat(priceString.replace(/[^\d.-]/g, ""));
+    const numericPrice = parseFloat(priceString.replace(/[^\d.]/g, ""));
     const totalPrice = (quantity * numericPrice).toFixed(2);
-    const newMedicine = { id, medicineName, quantity, price, totalPrice, type };
+    const newMedicine = { 
+      id, 
+      medicineName, 
+      quantity, 
+      price: numericPrice,
+      totalPrice, 
+      type 
+    };
+    
     const updatedMedicines = [...addedMedicines, newMedicine];
     setAddedMedicines(updatedMedicines);
     setMedicineName("");
@@ -100,13 +120,10 @@ export default function MedicineForm({ onAddMedicine }) {
 
   const handleEditMedicine = (index) => {
     const medicineToEdit = addedMedicines[index];
-
-    // Remove from list
     const updatedMedicines = addedMedicines.filter((_, i) => i !== index);
     setAddedMedicines(updatedMedicines);
     onAddMedicine(updatedMedicines);
 
-    // Pre-fill input fields
     setMedicineName(medicineToEdit.medicineName);
     setQuantity(medicineToEdit.quantity);
     setPrice(medicineToEdit.price);
@@ -126,12 +143,10 @@ export default function MedicineForm({ onAddMedicine }) {
     const discounted = Math.round(total - discountAmount);
     setDiscountedPrice(discounted.toFixed(2));
 
-    // Calculate change amount whenever givenAmount or discountedPrice changes
     const given = parseFloat(givenAmount) || 0;
     setChangeAmount((given - discounted).toFixed(2));
   }, [addedMedicines, discount, givenAmount]);
 
-  // Helper function to get stock status style
   const getStockStatusStyle = (stockQuantity) => {
     if (stockQuantity > 10) {
       return { color: "green", text: `In Stock: ${stockQuantity}` };
@@ -172,14 +187,12 @@ export default function MedicineForm({ onAddMedicine }) {
               onChange={(e) => {
                 setMedicineName(e.target.value);
                 handleSearch(e.target.value);
-                // Clear error when user starts typing
                 if (errors.medicineName) {
                   setErrors(prev => ({ ...prev, medicineName: '' }));
                 }
               }}
               autoComplete="off"
               value={medicineName}
-              
             />
           </div>
           {errors.medicineName && (
@@ -227,7 +240,7 @@ export default function MedicineForm({ onAddMedicine }) {
           )}
         </div>
         <div className="relative flex-1">
-          <label htmlFor="quantity" className="mb-2 mt-2 block text-sm font-medium">
+          <label htmlFor="quantity" className="mb-2 block text-sm font-medium">
             Quantity *
           </label>
           <div className="relative">
@@ -247,13 +260,11 @@ export default function MedicineForm({ onAddMedicine }) {
               value={quantity}
               onChange={(e) => {
                 setQuantity(e.target.value);
-                // Clear error when user starts typing
                 if (errors.quantity) {
                   setErrors(prev => ({ ...prev, quantity: '' }));
                 }
               }}
               min="1"
-              
             />
           </div>
           {errors.quantity && (
@@ -261,7 +272,7 @@ export default function MedicineForm({ onAddMedicine }) {
           )}
         </div>
         <div className="relative flex-1">
-          <label htmlFor="price" className="mb-2 mt-2 block text-sm font-medium">
+          <label htmlFor="price" className="mb-2 block text-sm font-medium">
             Price *
           </label>
           <div className="relative">
@@ -276,7 +287,6 @@ export default function MedicineForm({ onAddMedicine }) {
               value={price}
               onChange={(e) => {
                 setPrice(e.target.value);
-                // Clear error when user starts typing
                 if (errors.price) {
                   setErrors(prev => ({ ...prev, price: '' }));
                 }
@@ -286,7 +296,6 @@ export default function MedicineForm({ onAddMedicine }) {
                   ? 'border-red-500 focus:border-red-500' 
                   : 'border-gray-200 focus:border-blue-500'
               }`}
-              
             />
           </div>
           {errors.price && (
@@ -297,7 +306,7 @@ export default function MedicineForm({ onAddMedicine }) {
 
       <AddButton onClick={handleAddMedicine}></AddButton>
 
-      {/* Mobile-friendly Added Medicines Section */}
+      {/* Added Medicines Section */}
       <div className="mt-4">
         <h2 className={`${lusitana.className} text-xl mb-2 text-blue-500`}>
           Added Medicines
@@ -314,9 +323,7 @@ export default function MedicineForm({ onAddMedicine }) {
                 key={index} 
                 className="bg-gray-50 rounded-lg p-3 border border-gray-200"
               >
-                {/* Mobile Layout */}
                 <div className="block md:hidden">
-                  {/* Medicine Name and Actions */}
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900 text-base">
@@ -346,7 +353,6 @@ export default function MedicineForm({ onAddMedicine }) {
                     </div>
                   </div>
                   
-                  {/* Medicine Details */}
                   <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
                     <div>
                       <span className="font-medium">Quantity:</span>
@@ -365,7 +371,6 @@ export default function MedicineForm({ onAddMedicine }) {
                   </div>
                 </div>
 
-                {/* Desktop Layout */}
                 <div className="hidden md:flex justify-between items-center">
                   <div className="flex items-center gap-3 text-sm flex-1">
                     <span className="font-medium text-gray-900 min-w-0 flex-1">

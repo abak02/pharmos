@@ -38,7 +38,7 @@ export default async function InvoicesTable({
                 <div className="flex w-full items-center justify-between pt-4">
                   <div>
                     <p className="text-xl font-medium">
-                      {formatCurrency(invoice.amount)}
+                      {formatCurrency(invoice.amount)} TK
                     </p>
                     <p>{formatDateTimeToLocal(invoice.date)}</p>
                   </div>
@@ -95,7 +95,7 @@ export default async function InvoicesTable({
                     {invoice.phone_no}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
-                    {formatCurrency(invoice.amount)}
+                    {formatCurrency(invoice.amount)} TK
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     {formatDateTimeToLocal(invoice.date)}

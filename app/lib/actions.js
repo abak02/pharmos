@@ -21,7 +21,6 @@ const FormSchema = z.object({
 const CreateCustomer = FormSchema.omit({ id: true });
 
 export async function createCustomer(formData) {
-    //console.log(formData);
     const { customerName, customerEmail } = CreateCustomer.parse({
         customerName: formData.get('customerName'),
         customerEmail: formData.get('customerEmail')
@@ -44,17 +43,19 @@ export async function createCustomer(formData) {
 }
 
 export async function createInvoice(formData, selectedMedicines) {
-    const { customerName, customerEmail, status, discountPercentage, givenAmount } = CreateCustomer.parse({
+    const { customerName, customerEmail, status } = CreateCustomer.parse({
         customerName: formData.get('customerName'),
         customerEmail: formData.get('customerEmail'),
-        status: formData.get('status'),
-        discountPercentage: formData.get('discount'),
-        givenAmount: formData.get('givenAmount')
+        status: formData.get('status')
     });
     
-    console.log(discountPercentage, givenAmount);
-    const discountPercentNum = parseFloat(discountPercentage) || 0;
-    const givenAmountNum = parseFloat(givenAmount) || 0;
+    // Get the pre-calculated prices from frontend
+    const totalPrice = parseFloat(formData.get('totalPrice')) || 0;
+    const discountedPrice = parseFloat(formData.get('discountedPrice')) || 0;
+    const discountPercentage = parseFloat(formData.get('discountPercentage')) || 0;
+    const givenAmount = parseFloat(formData.get('givenAmount')) || 0;
+    const changeAmount = parseFloat(formData.get('changeAmount')) || 0;
+
 
     const invoiceId = uuidv4();
     const date = new Date();
@@ -77,29 +78,32 @@ export async function createInvoice(formData, selectedMedicines) {
             `;
         }
 
-        // Calculate total amount of the invoice
-        const total = selectedMedicines.reduce((acc, medicine) => acc + parseFloat(medicine.totalPrice), 0);
-        const discountedAmount = Math.round(total * (discountPercentNum / 100));
-        const finalAmount = Math.round(total - discountedAmount);
+        // Use the pre-calculated discounted price directly (no recalculation)
+        const finalAmount = discountedPrice;
 
-        // Insert invoice details
+        // Insert invoice details - only store final amount and given amount
+        // Since you don't have discount_percentage and change_amount columns, we'll store:
+        // - amount: final amount after discount
+        // - given_amount: amount given by customer
+        // - discounted_amount: the discount amount that was applied
+        const discountedAmount = totalPrice - discountedPrice;
+        
         await sql`
             INSERT INTO invoices (id, customer_id, date, amount, status, time, discounted_amount, given_amount)
-            VALUES (${invoiceId}, ${customerId}, ${formattedDateTime}, ${finalAmount * 100}, ${status}, ${formattedDateTime}, ${discountedAmount * 100}, ${givenAmountNum * 100})
+            VALUES (${invoiceId}, ${customerId}, ${formattedDateTime}, ${finalAmount*100}, ${status}, ${formattedDateTime}, ${discountedAmount*100}, ${givenAmount*100})
         `;
 
         // Process each medicine in the invoice
         for (const medicine of selectedMedicines) {
-            const { id, quantity, price, brandname } = medicine;
-            const priceString = price.toString();
-            const pricePerUnit = parseFloat(priceString.replace(/[^\d.-]/g, ''));
-            const priceInCents = Math.round(pricePerUnit * 100);
-            const customerQuantity = quantity;
+            const { id, quantity, price, medicineName } = medicine;
+            const pricePerUnit = parseFloat(price) || 0;
+            const customerQuantity = parseInt(quantity) || 0;
+
 
             // 1. Insert into invoice_medicines table
             await sql`
                 INSERT INTO invoice_medicines (invoice_id, medicine_id, quantity, price_per_unit)
-                VALUES (${invoiceId}, ${id}, ${customerQuantity}, ${priceInCents})
+                VALUES (${invoiceId}, ${id}, ${customerQuantity}, ${pricePerUnit*100})
             `;
 
             // 2. Update medicine price in medicinelist table if changed
@@ -110,14 +114,13 @@ export async function createInvoice(formData, selectedMedicines) {
             if (currentMedicine.rows.length > 0) {
                 const currentPrice = currentMedicine.rows[0].price;
                 
-                // Check if price has changed
-                if (Math.abs(currentPrice - priceInCents) > 1) {
+                // Check if price has changed (allow for small floating point differences)
+                if (Math.abs(currentPrice - pricePerUnit) > 0.01) {
                     await sql`
                         UPDATE medicinelist 
-                        SET price = ${priceInCents} 
+                        SET price = ${pricePerUnit*100} 
                         WHERE id = ${id}
                     `;
-                    console.log(`Price updated for ${brandname}: ${currentPrice} -> ${priceInCents}`);
                 }
             }
 
@@ -137,7 +140,6 @@ export async function createInvoice(formData, selectedMedicines) {
                         SET quantity = ${newStock} 
                         WHERE medicine_id = ${id}
                     `;
-                    console.log(`Stock reduced for ${brandname}: ${currentStock} -> ${newStock}`);
                 } else {
                     // Not enough stock - set to 0 and create invoice for full customer needs
                     await sql`
@@ -145,7 +147,6 @@ export async function createInvoice(formData, selectedMedicines) {
                         SET quantity = 0 
                         WHERE medicine_id = ${id}
                     `;
-                    console.log(`Insufficient stock for ${brandname}. Required: ${customerQuantity}, Available: ${currentStock}. Stock set to 0.`);
                 }
             } else {
                 // No inventory record found - create one with 0 stock
@@ -153,7 +154,6 @@ export async function createInvoice(formData, selectedMedicines) {
                     INSERT INTO shopinventory (medicine_id, quantity)
                     VALUES (${id}, 0)
                 `;
-                console.log(`Created inventory record for ${brandname} with 0 stock`);
             }
         }
 
@@ -168,72 +168,6 @@ export async function createInvoice(formData, selectedMedicines) {
     revalidatePath('/dashboard/invoices');
     redirect('/dashboard/invoices');
 }
-
-// export async function createInvoice(formData, selectedMedicines) {
-//     console.log(formData);
-//     const {
-//         customerName,
-//         customerEmail,
-//         status,
-//         discountPercentage,
-//         givenAmount,
-//     } = CreateCustomer.parse({
-//         customerName: formData.get('customerName'),
-//         customerEmail: formData.get('customerEmail'),
-//         status: formData.get('status'),
-//         discountPercentage: formData.get('discount'),
-//         givenAmount: formData.get('givenAmount'),
-//     });
-
-//     // Convert discount and given amount to numbers (handle NaN as needed)
-//     const discountPercentNum = parseFloat(discountPercentage) || 0;
-//     const givenAmountNum = parseFloat(givenAmount) || 0;
-
-//     const invoiceId = uuidv4();
-//     const date = new Date();
-//     const formattedDateTime = date.toISOString();
-//     let customerId;
-
-//     try {
-//         // Your existing customer check and insert here...
-
-//         // Calculate total amount of the invoice (sum of medicines)
-//         const total = selectedMedicines.reduce(
-//             (acc, medicine) => acc + parseFloat(medicine.totalPrice),
-//             0
-//         );
-
-//         // Calculate discounted amount
-//         const discountedAmount = total * (discountPercentNum / 100);
-
-//         // Calculate final amount after discount
-//         const finalAmount = total - discountedAmount;
-
-//         // Insert invoice with discount and given amount columns (multiply by 100 if using cents)
-//         await sql`
-//       INSERT INTO invoices (id, customer_id, date, amount, status, time, discounted_amount, given_amount)
-//       VALUES (${invoiceId}, ${customerId}, ${formattedDateTime}, ${Math.round(finalAmount * 100)}, ${status}, ${formattedDateTime}, ${Math.round(discountedAmount * 100)}, ${Math.round(givenAmountNum * 100)})
-//     `;
-
-//         // Insert medicines (your existing loop)
-//         for (const medicine of selectedMedicines) {
-//             const { id, quantity, price } = medicine;
-//             const pricePerUnit = parseFloat(price.replace(/[^\d.-]/g, ''));
-
-//             await sql`
-//         INSERT INTO invoice_medicines (invoice_id, medicine_id, quantity, price_per_unit)
-//         VALUES (${invoiceId}, ${id}, ${quantity}, ${pricePerUnit * 100})
-//       `;
-//         }
-//     } catch (error) {
-//         return {
-//             message: 'Database Error: Failed to Create Invoice.',
-//         };
-//     }
-//     revalidatePath('/dashboard/invoices');
-//     redirect('/dashboard/invoices');
-// }
-
 
 const UpdateStatusSchema = z.object({
     status: z.string().nonempty("Status is required"),
@@ -309,7 +243,6 @@ export async function authenticate(
 }
 
 export async function deleteShopMedicine(id) {
-    console.log('Deleting medicine with id:', id);
     try { await sql`DELETE FROM shopinventory WHERE medicine_id = ${id}::uuid`; }
     catch (error) {
         return {
