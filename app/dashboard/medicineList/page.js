@@ -6,7 +6,7 @@ import { lusitana } from '@/app/ui/fonts';
 import Table from '@/app/ui/medicinelist/Table';
 import { CardsSkeleton } from '@/app/ui/skeletons';
 import { Suspense } from 'react';
-import { fetchMedicinePages, fetchShopPages } from '@/app/lib/data';
+import { fetchMedicinePages} from '@/app/lib/data';
 export default async function page({searchParams}) {
     
    const query = searchParams?.query||'';
