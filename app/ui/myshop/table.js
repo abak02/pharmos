@@ -53,7 +53,7 @@ function StockIndicator({ quantity }) {
   };
 
   return (
-    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border ${borderColor} ${bgColor} transition-all duration-200`}>
+    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border ${borderColor} ${bgColor} transition-all duration-200`}>
       <Icon className={`h-4 w-4 ${iconColor}`} />
       <span className={`text-sm font-semibold ${color}`}>
         {getStockText(quantity)}
@@ -73,7 +73,7 @@ function MobileStockIndicator({ quantity }) {
   };
 
   return (
-    <div className={`inline-flex items-center gap-2 px-2 py-1 rounded-lg border ${borderColor} ${bgColor}`}>
+    <div className={`inline-flex items-center gap-2 px-2 py-1 rounded-full border ${borderColor} ${bgColor}`}>
       <Icon className={`h-3 w-3 ${iconColor}`} />
       <span className={`text-xs font-semibold ${color}`}>
         {getStockText(quantity)}
@@ -248,7 +248,7 @@ export default async function Table({ query, currentPage }) {
 
                     {/* Quantity */}
                     <td className="whitespace-nowrap px-3 py-3">
-                      <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl ${bgColor} border ${borderColor} transition-all duration-200`}>
+                      <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-full ${bgColor} border ${borderColor} transition-all duration-200`}>
                         <CubeIcon className={`h-4 w-4 ${color}`} />
                         <span className={`font-bold ${color}`}>
                           {formatQuantity(med.quantity)}
@@ -263,7 +263,7 @@ export default async function Table({ query, currentPage }) {
 
                     {/* Price */}
                     <td className="whitespace-nowrap px-3 py-3">
-                      <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700">
+                      <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-blue-50 border border-blue-200 text-blue-700">
                         <span className="font-semibold">{formatCurrency(med.price)}</span>
                         
                       </div>

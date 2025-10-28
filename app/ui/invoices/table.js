@@ -47,7 +47,7 @@ function ModernStatusBadge({ status }) {
   if (status === 'pending') {
     return (
       <div className="relative">
-        <div className="relative flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-200 backdrop-blur-sm">
+        <div className="relative flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-200 backdrop-blur-xs">
           <div className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -116,32 +116,31 @@ export default async function InvoicesTable({
                       <GradientAvatar name={invoice.name} className="w-12 h-12" />
                       <div>
                         <h3 className="font-semibold text-gray-900 text-base">{invoice.name}</h3>
-                        <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-0.5">
-                          <PhoneIcon className="h-4 w-4" />
+                        <div className="text-sm text-gray-500 px-2 py-1 bg-gray-100 rounded-full">
                           <span>{invoice.phone_no}</span>
                         </div>
                       </div>
                     </div>
-                    <ModernStatusBadge status={invoice.status} />
+                    
                   </div>
 
                   {/* Amount and Date */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-2 rounded-xl border border-green-100">
+                  
+                  <div className="flex items-center gap-1.5 text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-md my-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      <span>{formatDateTimeToLocal(invoice.date)}</span>
+                    </div>
+                  <div className="flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-2 rounded-md border border-green-100 my-2">
                       <CurrencyBangladeshiIcon className="h-5 w-5 text-green-600" />
-                      <p className="text-lg font-bold text-gray-900">
+                      <p className="text-md font-semibold text-gray-900">
                         {formatCurrency(invoice.amount)}
                       </p>
                       
                     </div>
-                    <div className="flex items-center gap-1.5 text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-xl">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span>{formatDateTimeToLocal(invoice.date)}</span>
-                    </div>
-                  </div>
-
+                  <ModernStatusBadge status={invoice.status} />
+                  
                   {/* Actions */}
-                  <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                  <div className="flex justify-end gap-2 pt-3 mt-3 border-t border-gray-100">
                     <UpdateInvoice id={invoice.id} />
                     <DeleteInvoice id={invoice.id} />
                   </div>
@@ -235,7 +234,7 @@ export default async function InvoicesTable({
             <div className="px-6 py-4 border-t border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-gray-100/30 rounded-b-2xl">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600 gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold bg-white px-3 py-1.5 rounded-xl border border-gray-200 shadow-sm">
+                  <span className="font-semibold bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
                     {invoices.length} {invoices.length === 1 ? 'invoice' : 'invoices'}
                   </span>
                   <span className="text-gray-500">found</span>
