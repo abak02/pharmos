@@ -8,7 +8,14 @@ import { lusitana } from '../fonts';
 import toast from 'react-hot-toast';
 import { createInvoice } from '@/app/lib/actions';
 import MedicineForm from './medicine-from';
-import { EnvelopeIcon, PhoneIcon, PlusIcon, UserCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { 
+    EnvelopeIcon, 
+    PhoneIcon, 
+    PlusIcon, 
+    UserCircleIcon, 
+    XMarkIcon,
+    BuildingStorefrontIcon 
+} from '@heroicons/react/24/outline';
 
 export default function CreateInvoice() {
     const router = useRouter();
@@ -25,8 +32,6 @@ export default function CreateInvoice() {
         changeAmount: 0
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // Remove the submitSuccess state and useEffect since we're handling redirect in handleSubmit
 
     const handleCustomerChange = useDebouncedCallback(async (term) => {
         if (term) {
@@ -55,7 +60,6 @@ export default function CreateInvoice() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Validate form - replace alert with toast
         if (selectedMedicines.length === 0) {
             toast.error('Please add at least one medicine to the invoice');
             return;
@@ -71,7 +75,6 @@ export default function CreateInvoice() {
         try {
             const formData = new FormData(e.target);
             
-            // Add the calculated price data to formData
             formData.append('totalPrice', priceData.totalPrice.toString());
             formData.append('discountedPrice', priceData.discountedPrice.toString());
             formData.append('discountPercentage', priceData.discountPercentage.toString());
@@ -82,7 +85,6 @@ export default function CreateInvoice() {
             
             if (result?.success) {
                 toast.success('Invoice created successfully!');
-                // Wait a bit for toast to show, then redirect
                 setTimeout(() => {
                     router.push('/dashboard/invoices');
                     router.refresh();
@@ -92,95 +94,126 @@ export default function CreateInvoice() {
             }
         } catch (error) {
             console.error('Error creating invoice:', error);
-            toast.error(error.message); // Replace alert with toast
+            toast.error(error.message);
             setIsSubmitting(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div className="rounded-md bg-gray-50 p-4 md:p-6">
-                <p className={`${lusitana.className} text-xl mb-2 text-blue-500`}>Customer Details</p>
-                
-                <div className="mb-4">
-                    <label htmlFor="customerName" className="mb-2 block text-sm font-medium">
-                        Customer Name
-                    </label>
-                    <div className="relative mt-2 rounded-md">
-                        <input
-                            type="text"
-                            id="customerName"
-                            name="customerName"
-                            autoComplete='off'
-                            placeholder="Enter customer name"
-                            value={inputValue}
-                            onChange={(e) => {
-                                setInputValue(e.target.value);
-                                handleCustomerChange(e.target.value);
-                            }}
-                            className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
-                            required
-                        />
-                        <UserCircleIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
-                        {showSuggestions && customersList.length > 0 && (
-                            <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-md mt-1 max-h-60 overflow-y-auto">
-                                {customersList.map((customer) => (
-                                    <li
-                                        key={customer.id}
-                                        onClick={() => handleSuggestionClick(customer)}
-                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                                    >
-                                        {customer.name}
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+        <div className="max-w-6xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
+            {/* Header */}
+            <div className="flex items-center justify-between pt-4">
+                <div>
+                    <h1 className={` ${lusitana.className} text-2xl font-bold text-gray-900`}>Create New Invoice</h1>
+                    <p className="text-gray-600 mt-1">Add customer details and medicines</p>
+                </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Customer Information Card */}
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <h2 className={` ${lusitana.className} text-lg font-semibold text-blue-500`}>Customer Information</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Customer Name */}
+                        <div className="space-y-2">
+                            <label htmlFor="customerName" className="block text-sm font-medium text-gray-700">
+                                Customer Name
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    id="customerName"
+                                    name="customerName"
+                                    autoComplete='off'
+                                    placeholder="Enter customer name"
+                                    value={inputValue}
+                                    onChange={(e) => {
+                                        setInputValue(e.target.value);
+                                        handleCustomerChange(e.target.value);
+                                    }}
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-3 pl-11 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                                    required
+                                />
+                                <UserCircleIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                {showSuggestions && customersList.length > 0 && (
+                                    <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-y-auto">
+                                        {customersList.map((customer) => (
+                                            <li
+                                                key={customer.id}
+                                                onClick={() => handleSuggestionClick(customer)}
+                                                className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                                            >
+                                                <div className="font-medium text-gray-900">{customer.name}</div>
+                                                <div className="text-sm text-gray-500">{customer.phone_no}</div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Customer Phone */}
+                        <div className="space-y-2">
+                            <label htmlFor="customerEmail" className="block text-sm font-medium text-gray-700">
+                                Customer Phone No
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    id="customerEmail"
+                                    name="customerEmail"
+                                    autoComplete='off'
+                                    placeholder="Enter customer phone number"
+                                    value={customerEmail}
+                                    onChange={(e) => setCustomerEmail(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-3 pl-11 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                                    required
+                                />
+                                <PhoneIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div className="mb-4">
-                    <label htmlFor="customerEmail" className="mb-2 block text-sm font-medium">
-                        Customer Phone No
-                    </label>
-                    <div className="relative mt-2 rounded-md">
-                        <input
-                            type="text"
-                            id="customerEmail"
-                            name="customerEmail"
-                            autoComplete='off'
-                            placeholder="Enter customer Phone No."
-                            value={customerEmail}
-                            onChange={(e) => setCustomerEmail(e.target.value)}
-                            className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
-                            required
+
+                {/* Medicine Form Card */}
+                <div className="bg-white rounded-lg border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                        <div className="flex items-center gap-3">
+                            <h2 className={` ${lusitana.className} text-lg font-semibold text-blue-500`}>Medicines</h2>
+                        </div>
+                    </div>
+                    
+                    <div className="p-6">
+                        <MedicineForm 
+                            onAddMedicine={handleAddMedicine} 
+                            onPriceUpdate={handlePriceUpdate} 
                         />
-                        <PhoneIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
                     </div>
                 </div>
-                
-                <MedicineForm 
-                    onAddMedicine={handleAddMedicine} 
-                    onPriceUpdate={handlePriceUpdate} 
-                />
-                
-                <div className="mt-6 flex justify-end gap-4">
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 justify-end pt-6 border-t border-gray-200">
                     <Link
                         href="/dashboard/invoices"
-                        className="flex h-10 items-center rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
+                        className="flex items-center justify-center gap-2 px-6 py-3 rounded-md border border-red-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                     >
-                        <XMarkIcon className="h-5 w-5 mr-2 text-red-500" />
+                        <XMarkIcon className="h-4 w-4 text-red-300" />
                         Cancel
                     </Link>
+                    
                     <button 
-                        className="flex h-10 items-center rounded-lg bg-blue-500 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 active:bg-blue-600 aria-disabled:cursor-not-allowed aria-disabled:opacity-50" 
+                        className="flex items-center justify-center gap-2 px-6 py-3 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
                         type="submit"
                         disabled={isSubmitting}
                     >
-                        <PlusIcon className="h-5 w-5 mr-2" />
-                        {isSubmitting ? 'Creating...' : 'Create Invoice'}
+                        <PlusIcon className="h-4 w-4" />
+                        {isSubmitting ? 'Creating Invoice...' : 'Create Invoice'}
                     </button>
                 </div>
-            </div>
-        </form>
+            </form>
+        </div>
     );
 }

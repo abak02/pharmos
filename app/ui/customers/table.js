@@ -220,7 +220,7 @@ export default async function CustomersTable({ query, currentPage }) {
                           <td className="px-4 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-3 min-w-0">
                               <div
-                                className={`w-10 h-10 bg-gradient-to-br ${gradientClass} rounded-full flex items-center justify-center shadow-sm flex-shrink-0`}
+                                className={`w-10 h-10 bg-gradient-to-br ${gradientClass} rounded-full flex items-center justify-center shadow-lg flex-shrink-0`}
                               >
                                 <span className="text-white font-semibold text-sm">
                                   {customer.name.charAt(0).toUpperCase()}
@@ -266,7 +266,7 @@ export default async function CustomersTable({ query, currentPage }) {
                               >
                                 {formatCurrency(customer.total_pending)}
                               </span>
-                              <span className="text-xs text-gray-500">TK</span>
+                              
                             </div>
                           </td>
 
@@ -277,7 +277,7 @@ export default async function CustomersTable({ query, currentPage }) {
                               <span className="font-semibold text-green-600">
                                 {formatCurrency(customer.total_paid)}
                               </span>
-                              <span className="text-xs text-gray-500">TK</span>
+                              
                             </div>
                           </td>
                         </tr>

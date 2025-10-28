@@ -100,7 +100,7 @@ export function Card({
       
       {/* Progress bar or additional info */}
       <div className="mt-4">
-        <div className="w-full bg-gray-200 rounded-full h-1.5">
+        <div className={`w-full ${colors.border} rounded-full h-1.5`}>
           <div 
             className={`h-1.5 rounded-full ${colors.bg.replace('bg-gradient-to-br', 'bg').replace('50', '400').replace('100', '500')}`}
             style={{ width: '75%' }}

@@ -1,12 +1,13 @@
 
 
 export const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-BD', {
+  const formattedAmount = new Intl.NumberFormat('en-BD', {
     style: 'currency',
     currency: 'BDT',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
+  return `${formattedAmount} TK`;
 };
 
 // This will display: ৳50.00, ৳123.45 etc.

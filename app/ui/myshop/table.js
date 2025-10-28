@@ -142,15 +142,15 @@ export default async function Table({ query, currentPage }) {
 
                   {/* Stats Row */}
                   <div className="flex items-center justify-between mb-4">
-                    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl ${getStockStatus(med.quantity).bgColor} border transition-all duration-200`}>
+                    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-full ${getStockStatus(med.quantity).bgColor} border transition-all duration-200`}>
                       <CubeIcon className={`h-4 w-4 ${getStockStatus(med.quantity).color}`} />
                       <span className={`text-sm font-bold ${getStockStatus(med.quantity).color}`}>
                         {formatQuantity(med.quantity)}
                       </span>
                     </div>
-                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700">
+                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-blue-50 border border-blue-200 text-blue-700">
                       <span className="text-sm font-semibold">{formatCurrency(med.price)}</span>
-                      <span className="text-xs text-blue-600 font-medium">TK</span>
+                      
                     </div>
                   </div>
 
@@ -265,7 +265,7 @@ export default async function Table({ query, currentPage }) {
                     <td className="whitespace-nowrap px-3 py-3">
                       <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700">
                         <span className="font-semibold">{formatCurrency(med.price)}</span>
-                        <span className="text-xs text-blue-600 font-medium">TK</span>
+                        
                       </div>
                     </td>
 

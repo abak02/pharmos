@@ -7,7 +7,7 @@ export default function POSReceipt({ invoice, customer, medicineList, showPrevie
   return (
     <div
       id="pos-receipt"
-      className={`${showPreview ? 'block' : 'hidden print:block'} p-2 max-w-[58mm] mx-auto font-mono text-xs bg-white ${showPreview ? 'border-2 border-dashed border-blue-500 shadow-lg' : ''}`}
+      className={`${showPreview ? 'block' : 'hidden print:block'} p-2 max-w-[58mm] mx-auto font-sans text-xs bg-white ${showPreview ? 'border-2 border-dashed border-blue-500 shadow-lg' : ''}`}
     >
       {/* Header - Compact */}
       <div className="text-center mb-2 border-b border-black pb-1">

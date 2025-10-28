@@ -98,7 +98,7 @@ export default async function MedicineTable({
                                         )}
                                     </div>
                                     <div className="text-blue-600 font-bold ml-2">
-                                        {formatCurrency(medicine.price)} TK
+                                        {formatCurrency(medicine.price)}
                                     </div>
                                 </div>
 
@@ -195,7 +195,7 @@ export default async function MedicineTable({
 
                                         <td className="px-4 py-4">
                                             <span className="font-bold text-blue-600">
-                                                {formatCurrency(medicine.price)} TK
+                                                {formatCurrency(medicine.price)}
                                             </span>
                                         </td>
                                     </tr>

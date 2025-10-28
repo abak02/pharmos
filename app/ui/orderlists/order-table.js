@@ -1,7 +1,14 @@
 // app/ui/orderlist/order-table.js
 import { formatQuantity, formatCurrency } from '@/app/lib/utils';
+import { useState, useEffect } from 'react';
 
 export default function OrderTable({ medicines, manufacturer }) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
+
   if (!medicines || medicines.length === 0) {
     return (
       <div className="text-center p-8 bg-yellow-50 rounded-lg border border-yellow-200">
@@ -16,43 +23,94 @@ export default function OrderTable({ medicines, manufacturer }) {
 
   return (
     <div>
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg border border-red-200">
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-            <h3 className="text-lg font-semibold text-red-700">Out of Stock</h3>
+      {/* Summary Cards - Mobile Optimized */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        {/* Out of Stock Card */}
+        <div 
+          className={`bg-white p-4 rounded-xl border border-red-200 shadow-sm hover:shadow-md transition-all duration-300 transform ${
+            isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+          }`}
+          style={{ transitionDelay: '0ms' }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-red-500 rounded-full mr-2 animate-pulse"></div>
+              <h3 className="text-sm font-semibold text-red-700">Out of Stock</h3>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-red-600">{outOfStock.length}</p>
+              <p className="text-xs text-gray-500 mt-1">items</p>
+            </div>
           </div>
-          <p className="text-2xl font-bold text-red-600 mt-2">{outOfStock.length} items</p>
+          <div className="mt-3 w-full bg-red-100 rounded-full h-2">
+            <div 
+              className="bg-red-500 h-2 rounded-full transition-all duration-1000 ease-out"
+              style={{ width: `${(outOfStock.length / medicines.length) * 100}%` }}
+            ></div>
+          </div>
         </div>
         
-        <div className="bg-white p-4 rounded-lg border border-orange-200">
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-            <h3 className="text-lg font-semibold text-orange-700">Low Stock</h3>
+        {/* Low Stock Card */}
+        <div 
+          className={`bg-white p-4 rounded-xl border border-orange-200 shadow-sm hover:shadow-md transition-all duration-300 transform ${
+            isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+          }`}
+          style={{ transitionDelay: '100ms' }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+              <h3 className="text-sm font-semibold text-orange-700">Low Stock</h3>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-orange-600">{lowStock.length}</p>
+              <p className="text-xs text-gray-500 mt-1">items</p>
+            </div>
           </div>
-          <p className="text-2xl font-bold text-orange-600 mt-2">{lowStock.length} items</p>
+          <div className="mt-3 w-full bg-orange-100 rounded-full h-2">
+            <div 
+              className="bg-orange-500 h-2 rounded-full transition-all duration-1000 ease-out"
+              style={{ width: `${(lowStock.length / medicines.length) * 100}%` }}
+            ></div>
+          </div>
         </div>
         
-        <div className="bg-white p-4 rounded-lg border border-blue-200">
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-            <h3 className="text-lg font-semibold text-blue-700">Total to Order</h3>
+        {/* Total to Order Card */}
+        <div 
+          className={`bg-white p-4 rounded-xl border border-blue-200 shadow-sm hover:shadow-md transition-all duration-300 transform ${
+            isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+          }`}
+          style={{ transitionDelay: '200ms' }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+              <h3 className="text-sm font-semibold text-blue-700">Total to Order</h3>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-blue-600">{medicines.length}</p>
+              <p className="text-xs text-gray-500 mt-1">items</p>
+            </div>
           </div>
-          <p className="text-2xl font-bold text-blue-600 mt-2">{medicines.length} items</p>
+          <div className="mt-3 w-full bg-blue-100 rounded-full h-2">
+            <div className="bg-blue-500 h-2 rounded-full w-full"></div>
+          </div>
         </div>
       </div>
 
-      {/* Medicines Table */}
+      {/* Medicines Table - Rest of your existing code remains the same */}
       <div className="bg-gray-50 rounded-lg">
         {/* Mobile View */}
         <div className="md:hidden">
-          {medicines.map((med) => (
+          {medicines.map((med, index) => (
             <div 
               key={med.medicine_id} 
-              className={`p-4 border-b ${
+              className={`p-4 border-b transform transition-all duration-300 ${
+                isVisible ? 'translate-x-0 opacity-100' : 'translate-x-4 opacity-0'
+              } ${
                 med.quantity === 0 ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'
               }`}
+              style={{ transitionDelay: `${300 + (index * 50)}ms` }}
             >
               <div className="flex justify-between items-start mb-2">
                 <div>
@@ -117,10 +175,13 @@ export default function OrderTable({ medicines, manufacturer }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {medicines.map((med) => (
+            {medicines.map((med, index) => (
               <tr 
                 key={med.medicine_id}
-                className={med.quantity === 0 ? 'bg-red-50' : 'bg-orange-50'}
+                className={`transform transition-all duration-300 ${
+                  isVisible ? 'translate-x-0 opacity-100' : 'translate-x-4 opacity-0'
+                } ${med.quantity === 0 ? 'bg-red-50' : 'bg-orange-50'}`}
+                style={{ transitionDelay: `${300 + (index * 30)}ms` }}
               >
                 <td className="px-6 py-4">
                   <div>

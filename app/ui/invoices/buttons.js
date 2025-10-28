@@ -32,7 +32,7 @@ export function DeleteInvoice({ id }) {
     <form action={deleteInvoiceWithId}>
       <button className="rounded-md border p-2 hover:bg-gray-100">
         <span className="sr-only">Delete</span>
-        <TrashIcon className="w-4 text-red-500" />
+        <TrashIcon className="w-5 text-red-500" />
       </button>
     </form>
   );
