@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { lusitana } from "../fonts";
 import { fetchFilteredMedicineWithStockForSuggestion } from "@/app/lib/data";
@@ -30,8 +30,8 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
   const [changeAmount, setChangeAmount] = useState(0);
   const [errors, setErrors] = useState({});
 
-  // Send price updates to parent whenever they change
-  useEffect(() => {
+  // Memoize the price update function to prevent infinite loops
+  const updateParentPrices = useCallback(() => {
     if (onPriceUpdate) {
       onPriceUpdate({
         totalPrice: parseFloat(totalPrice) || 0,
@@ -43,8 +43,21 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     }
   }, [totalPrice, discountedPrice, discount, givenAmount, changeAmount, onPriceUpdate]);
 
+  // Use a ref to track if this is the initial render
+  const initialRender = React.useRef(true);
+
+  useEffect(() => {
+    if (initialRender.current) {
+      initialRender.current = false;
+      return;
+    }
+    
+    // Debounce the price update to parent
+    const timeoutId = setTimeout(updateParentPrices, 100);
+    return () => clearTimeout(timeoutId);
+  }, [updateParentPrices]);
+
   const handleSearch = useDebouncedCallback(async (term) => {
-    console.log(`Searching ${term}`);
     if (term && term.length >= 2) {
       const filteredMedicines = await fetchFilteredMedicineWithStockForSuggestion(term);
       setMedicines(filteredMedicines);
@@ -109,20 +122,28 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     setType("");
     setId("");
     setErrors({});
-    onAddMedicine(updatedMedicines);
+    
+    // Call onAddMedicine after state update
+    if (onAddMedicine) {
+      onAddMedicine(updatedMedicines);
+    }
   };
 
   const handleDeleteMedicine = (index) => {
     const updatedMedicines = addedMedicines.filter((_, i) => i !== index);
     setAddedMedicines(updatedMedicines);
-    onAddMedicine(updatedMedicines);
+    if (onAddMedicine) {
+      onAddMedicine(updatedMedicines);
+    }
   };
 
   const handleEditMedicine = (index) => {
     const medicineToEdit = addedMedicines[index];
     const updatedMedicines = addedMedicines.filter((_, i) => i !== index);
     setAddedMedicines(updatedMedicines);
-    onAddMedicine(updatedMedicines);
+    if (onAddMedicine) {
+      onAddMedicine(updatedMedicines);
+    }
 
     setMedicineName(medicineToEdit.medicineName);
     setQuantity(medicineToEdit.quantity);
@@ -132,6 +153,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     setErrors({});
   };
 
+  // Calculate prices without triggering infinite updates
   useEffect(() => {
     const total = addedMedicines.reduce(
       (acc, medicine) => acc + parseFloat(medicine.totalPrice),
@@ -306,6 +328,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
 
       <AddButton onClick={handleAddMedicine}></AddButton>
 
+
       {/* Added Medicines Section */}
       <div className="mt-4">
         <h2 className={`${lusitana.className} text-xl mb-2 text-blue-500`}>
@@ -469,7 +492,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
             type="number"
             id="givenAmount"
             name="givenAmount"
-            min="0"
+            min={discountedPrice}
             step="1"
             placeholder="Enter given amount"
             value={givenAmount}
