@@ -14,6 +14,8 @@ export default async function page({ searchParams }) {
   const query = searchParams?.query || '';
   const currentPage = Number(searchParams?.page) || 1;
   const totalPages = await fetchCustomerPages(query);
+  const filter = searchParams?.filter || 'all';
+
   return (
     <>
       <div className="flex w-full items-center justify-between">
@@ -27,7 +29,7 @@ export default async function page({ searchParams }) {
       </div>
 
       <Suspense key={query + currentPage} fallback={<InvoicesTableSkeleton />}>
-        <CustomersTable query={query} currentPage={currentPage} />
+        <CustomersTable query={query} currentPage={currentPage} filter={filter} />
       </Suspense>
 
       <div className="mt-5 flex w-full justify-center">

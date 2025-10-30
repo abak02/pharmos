@@ -450,20 +450,51 @@ export async function fetchFilteredCustomers(query, currentPage) {
 }
 
 
-export async function fetchInvoicesPages(query) {
+// app/lib/data.js
+
+export async function fetchInvoicesPages(query, customerId = null, status = null) {
   noStore();
   try {
-    const count = await sql`SELECT COUNT(*)
-    FROM invoices
-    JOIN customers ON invoices.customer_id = customers.id
-    WHERE
-      customers.name ILIKE ${`%${query}%`} OR
-      customers.phone_no ILIKE ${`%${query}%`} OR
-      invoices.amount::text ILIKE ${`%${query}%`} OR
-      invoices.date::text ILIKE ${`%${query}%`} OR
-      invoices.status ILIKE ${`%${query}%`}
-  `;
+    let whereConditions = [];
+    let queryParams = [];
 
+    if (customerId) {
+      whereConditions.push(`invoices.customer_id = $${whereConditions.length + 1}`);
+      queryParams.push(customerId);
+    }
+
+    if (status) {
+      whereConditions.push(`invoices.status = $${whereConditions.length + 1}`);
+      queryParams.push(status);
+    }
+
+    if (query) {
+      const paramIndex = whereConditions.length + 1;
+      whereConditions.push(`(
+        customers.name ILIKE $${paramIndex} OR
+        customers.phone_no ILIKE $${paramIndex} OR
+        invoices.amount::text ILIKE $${paramIndex} OR
+        invoices.date::text ILIKE $${paramIndex} OR
+        invoices.status ILIKE $${paramIndex}
+      )`);
+      queryParams.push(`%${query}%`);
+    }
+
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(' AND ')}` 
+      : '';
+
+    const countQuery = {
+      text: `
+        SELECT COUNT(*)
+        FROM invoices
+        JOIN customers ON invoices.customer_id = customers.id
+        ${whereClause}
+      `,
+      values: queryParams
+    };
+
+    const count = await sql.query(countQuery);
     const totalPages = Math.ceil(Number(count.rows[0].count) / INVOICES_PER_PAGE);
     return totalPages;
   } catch (error) {
@@ -472,36 +503,65 @@ export async function fetchInvoicesPages(query) {
   }
 }
 
-export async function fetchFilteredInvoices(query, currentPage) {
+export async function fetchFilteredInvoices(query, currentPage, customerId = null, status = null) {
   noStore();
   const offset = (currentPage - 1) * INVOICES_PER_PAGE;
 
   try {
-    const invoices = await sql`
-  SELECT
-    invoices.id,
-    invoices.amount,
-    invoices.date,
-    invoices.given_amount,
-    invoices.status,
-    customers.name,
-    customers.phone_no
-  FROM invoices
-  JOIN customers ON invoices.customer_id = customers.id
-  WHERE
-    customers.name ILIKE ${`%${query}%`} OR
-    customers.phone_no ILIKE ${`%${query}%`} OR
-    invoices.amount::text ILIKE ${`%${query}%`} OR
-    invoices.date::text ILIKE ${`%${query}%`} OR
-    invoices.status ILIKE ${`%${query}%`}
-    ORDER BY invoices.date DESC
-  LIMIT ${INVOICES_PER_PAGE} OFFSET ${offset}
-`;
+    let whereConditions = [];
+    let queryParams = [];
+
+    if (customerId) {
+      whereConditions.push(`invoices.customer_id = $${whereConditions.length + 1}`);
+      queryParams.push(customerId);
+    }
+
+    if (status) {
+      whereConditions.push(`invoices.status = $${whereConditions.length + 1}`);
+      queryParams.push(status);
+    }
+
+    if (query) {
+      const paramIndex = whereConditions.length + 1;
+      whereConditions.push(`(
+        customers.name ILIKE $${paramIndex} OR
+        customers.phone_no ILIKE $${paramIndex} OR
+        invoices.amount::text ILIKE $${paramIndex} OR
+        invoices.date::text ILIKE $${paramIndex} OR
+        invoices.status ILIKE $${paramIndex}
+      )`);
+      queryParams.push(`%${query}%`);
+    }
+
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(' AND ')}` 
+      : '';
+
+    const invoicesQuery = {
+      text: `
+        SELECT
+          invoices.id,
+          invoices.amount,
+          invoices.date,
+          invoices.given_amount,
+          invoices.status,
+          customers.name,
+          customers.phone_no
+        FROM invoices
+        JOIN customers ON invoices.customer_id = customers.id
+        ${whereClause}
+        ORDER BY invoices.date DESC
+        LIMIT ${INVOICES_PER_PAGE} OFFSET ${offset}
+      `,
+      values: queryParams
+    };
+
+    const invoices = await sql.query(invoicesQuery);
 
     return invoices.rows.map(invoice => ({
       ...invoice,
-      amount: invoice.amount / 100, // convert from cents to taka
-      given_amount: invoice.given_amount / 100, // convert from cents to taka
+      amount: invoice.amount / 100,
+      given_amount: invoice.given_amount / 100,
     }));
   } catch (error) {
     console.error('Database Error:', error);

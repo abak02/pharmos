@@ -1,3 +1,4 @@
+// app/ui/customers/table.js
 import { fetchFilteredCustomers } from "@/app/lib/data";
 import { formatCurrency } from "@/app/lib/utils";
 import {
@@ -7,6 +8,8 @@ import {
   CheckCircleIcon,
   PhoneIcon,
 } from "@heroicons/react/24/outline";
+import FilterButtons from "./filter-button";
+import { ViewInvoicesButton } from "./action-button";
 
 // Function to generate random gradient based on customer name
 function getRandomGradient(name) {
@@ -32,17 +35,48 @@ function getRandomGradient(name) {
   return gradients[index];
 }
 
-export default async function CustomersTable({ query, currentPage }) {
+function filterCustomers(customers, filterType) {
+  if (filterType === 'all') return customers;
+  
+  return customers.filter(customer => {
+    if (filterType === 'pending') {
+      return customer.total_pending > 0;
+    }
+    if (filterType === 'paid') {
+      return customer.total_pending === 0 && customer.total_paid > 0;
+    }
+    return true;
+  });
+}
+
+function getFilterCounts(customers) {
+  const total = customers.length;
+  const pending = customers.filter(c => c.total_pending > 0).length;
+  const paid = customers.filter(c => c.total_pending === 0 && c.total_paid > 0).length;
+  
+  return { total, pending, paid };
+}
+
+export default async function CustomersTable({ query, currentPage, filter = 'all' }) {
   const customers = await fetchFilteredCustomers(query, currentPage);
+  
+  // Filter customers based on URL parameter
+  const filteredCustomers = filterCustomers(customers, filter);
+  const filterCounts = getFilterCounts(customers);
 
   return (
     <div className="w-full">
+      <FilterButtons 
+        currentFilter={filter}
+        filterCounts={filterCounts}
+      />
+
       <div className="mt-6 flow-root">
         <div className="overflow-x-auto">
           <div className="inline-block min-w-full align-middle">
             {/* Mobile Cards */}
             <div className="md:hidden space-y-3">
-              {customers?.map((customer) => {
+              {filteredCustomers?.map((customer) => {
                 const gradientClass = getRandomGradient(customer.name);
 
                 return (
@@ -76,7 +110,7 @@ export default async function CustomersTable({ query, currentPage }) {
                       </div>
                     </div>
 
-                    {/* Stats Grid - Adjusted for better mobile layout */}
+                    {/* Stats Grid */}
                     <div className="grid grid-cols-3 gap-2 mb-3">
                       <div className="text-center p-2 bg-gray-50 rounded-lg">
                         <div className="flex items-center justify-center gap-1 mb-1">
@@ -148,16 +182,25 @@ export default async function CustomersTable({ query, currentPage }) {
                       <span className="truncate">
                         ID: {customer.id.slice(0, 8)}...
                       </span>
-                      <div
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          customer.total_pending > 0
-                            ? "bg-red-100 text-red-700 border border-red-200"
-                            : "bg-green-100 text-green-700 border border-green-200"
-                        }`}
-                      >
-                        {customer.total_pending > 0
-                          ? "Has Pending"
-                          : "All Paid"}
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            customer.total_pending > 0
+                              ? "bg-red-100 text-red-700 border border-red-200"
+                              : "bg-green-100 text-green-700 border border-green-200"
+                          }`}
+                        >
+                          {customer.total_pending > 0
+                            ? "Has Pending"
+                            : "All Paid"}
+                        </div>
+                        {/* Add View Invoices button for mobile */}
+                        <ViewInvoicesButton 
+                          customerId={customer.id} 
+                          customerName={customer.name}
+                          variant="icon"
+                          currentFilter={filter}
+                        />
                       </div>
                     </div>
                   </div>
@@ -165,7 +208,7 @@ export default async function CustomersTable({ query, currentPage }) {
               })}
             </div>
 
-            {/* Desktop Table - Fixed scroll issue */}
+            {/* Desktop Table */}
             <div className="hidden md:block rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -204,11 +247,18 @@ export default async function CustomersTable({ query, currentPage }) {
                           Paid
                         </div>
                       </th>
+                      {/* Add Actions column header */}
+                      <th
+                        scope="col"
+                        className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap"
+                      >
+                        Actions
+                      </th>
                     </tr>
                   </thead>
 
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {customers.map((customer) => {
+                    {filteredCustomers.map((customer) => {
                       const gradientClass = getRandomGradient(customer.name);
 
                       return (
@@ -266,7 +316,6 @@ export default async function CustomersTable({ query, currentPage }) {
                               >
                                 {formatCurrency(customer.total_pending)}
                               </span>
-                              
                             </div>
                           </td>
 
@@ -277,8 +326,16 @@ export default async function CustomersTable({ query, currentPage }) {
                               <span className="font-semibold text-green-600">
                                 {formatCurrency(customer.total_paid)}
                               </span>
-                              
                             </div>
+                          </td>
+
+                          {/* Actions Column - Add this new column */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <ViewInvoicesButton 
+                              customerId={customer.id} 
+                              customerName={customer.name}
+                              currentFilter={filter}
+                            />
                           </td>
                         </tr>
                       );
@@ -288,10 +345,15 @@ export default async function CustomersTable({ query, currentPage }) {
               </div>
 
               {/* Table Footer */}
-              {customers.length > 0 && (
+              {filteredCustomers.length > 0 && (
                 <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600 gap-2">
-                    <span>Showing {customers.length} customers</span>
+                    <span>
+                      Showing {filteredCustomers.length}{" "}
+                      {filter !== 'all' && ` ${filter} `} 
+                       customers
+                      {filter !== 'all' && ` (${filterCounts.total} total)`}
+                    </span>
                     <div className="flex items-center gap-4 flex-wrap">
                       <span className="flex items-center gap-2 whitespace-nowrap">
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -308,7 +370,7 @@ export default async function CustomersTable({ query, currentPage }) {
             </div>
 
             {/* Empty State */}
-            {customers.length === 0 && (
+            {filteredCustomers.length === 0 && (
               <div className="text-center py-12">
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <DocumentTextIcon className="h-10 w-10 text-gray-400" />
@@ -317,7 +379,9 @@ export default async function CustomersTable({ query, currentPage }) {
                   No customers found
                 </h3>
                 <p className="text-gray-500 max-w-sm mx-auto">
-                  {query
+                  {filter !== 'all'
+                    ? `No ${filter} customers match your current filter.`
+                    : query
                     ? `No customers match your search for "${query}". Try a different search term.`
                     : "No customers available at the moment."}
                 </p>
