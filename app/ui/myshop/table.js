@@ -101,8 +101,8 @@ export default async function Table({ query, currentPage }) {
 
   return (
     <div className="mt-6 flow-root">
-      <div className="inline-block min-w-full align-middle">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100/50 p-4 md:p-6">
+      <div className="inline-block min-w-full align-middle ">
+        <div className="rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100/50">
           
           {/* Mobile View - Modern Cards */}
           <div className="md:hidden space-y-4">
@@ -175,7 +175,7 @@ export default async function Table({ query, currentPage }) {
           </div>
 
           {/* Desktop View - Modern table with original structure */}
-          <table className="hidden min-w-full text-gray-900 md:table">
+          <table className="hidden min-w-full text-gray-900 md:table md:p-2 rounded-full ">
             <thead className="rounded-lg text-left text-sm font-normal bg-gradient-to-r from-gray-50 to-gray-50">
               <tr>
                 <th scope="col" className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">

@@ -4,7 +4,7 @@ import Pagination from '@/app/ui/medicinelist/pagination';
 import Search from '@/app/ui/search';
 import { lusitana } from '@/app/ui/fonts';
 import Table from '@/app/ui/medicinelist/Table';
-import { CardsSkeleton } from '@/app/ui/skeletons';
+import { CardsSkeleton, InvoicesTableSkeleton, MedicinesTableSkeleton } from '@/app/ui/skeletons';
 import { Suspense } from 'react';
 import { fetchMedicinePages} from '@/app/lib/data';
 export default async function page({searchParams}) {
@@ -23,7 +23,7 @@ export default async function page({searchParams}) {
         <Search placeholder="Search by Brand Name or Generic Name ..." />
         {/* <CreateInvoice /> */}
       </div>
-       <Suspense key={query + currentPage} fallback={<CardsSkeleton />}>
+       <Suspense key={query + currentPage} fallback={<MedicinesTableSkeleton />}>
         <Table query={query} currentPage={currentPage} />
       </Suspense>
       <div className="mt-5 flex w-full justify-center">
