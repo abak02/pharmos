@@ -42,10 +42,20 @@ export async function createCustomer(formData) {
 }
 
 export async function createInvoice(formData, selectedMedicines) {
+
+    // Get and validate status with proper error handling
+    let getStatus = formData.get('status');
+    
+    // Safety check - if status is null, determine from payment method
+    if (!getStatus) {
+        const paymentMethod = formData.get('paymentMethod') || 'cash';
+        getStatus = paymentMethod === 'credit' ? 'pending' : 'paid';
+    }
+
     const { customerName, customerEmail, status } = CreateCustomer.parse({
         customerName: formData.get('customerName'),
         customerEmail: formData.get('customerEmail'),
-        status: formData.get('status')
+        status: getStatus,
     });
     
     // Convert to cents and ROUND to integers
@@ -166,44 +176,57 @@ export async function createInvoice(formData, selectedMedicines) {
     }
 }
 
+// Update your schema to include givenAmount
 const UpdateStatusSchema = z.object({
   status: z.string().nonempty("Status is required"),
+  givenAmount: z.string().optional(),
 });
 
 export async function updateInvoice(id, formData) {
-  const { status } = UpdateStatusSchema.parse({
+  // Parse the form data with given amount
+  const { status, givenAmount } = UpdateStatusSchema.parse({
     status: formData.get("status"),
+    givenAmount: formData.get("givenAmount") || "0", // Default to 0 if not provided
   });
-  const locale = "en-US";
-  const options = {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true, // Use 12-hour format
-  };
-  const date = new Date();
 
-  // Format both date and time together
+  const date = new Date();
   const formattedDateTime = date.toISOString();
 
   try {
+    // Convert given amount to cents
+    const givenAmountInCents = Math.round(parseFloat(givenAmount) * 100) || 0;
+
+    // Get current invoice amount to calculate change
+    const currentInvoice = await sql`
+      SELECT amount FROM invoices WHERE id = ${id}
+    `;
+
+    if (currentInvoice.rows.length === 0) {
+      return { success: false, message: 'Invoice not found.' };
+    }
+
+    const invoiceAmount = currentInvoice.rows[0].amount;
+    
+    // Update invoice with status, given amount, and time
     await sql`
-            UPDATE invoices
-            SET status = ${status}, time=${formattedDateTime}
-            WHERE id = ${id}
-        `;
-        revalidatePath('/dashboard/invoices');
+      UPDATE invoices
+      SET status = ${status}, 
+          given_amount = ${givenAmountInCents},
+          time = ${formattedDateTime}
+      WHERE id = ${id}
+    `;
+
+    revalidatePath('/dashboard/invoices');
     return { success: true, message: 'Invoice updated successfully!' };
   } catch (error) {
+    console.error('Database Error: Failed to Update Invoice.', error);
     return {
-      message: "Database Error: Failed to Update Invoice.",
+      success: false,
+      message: "Database Error: Failed to Update Invoice."
     };
   }
-
 }
+
 export async function deleteInvoice(id) {
   //console.log(id);
   try {

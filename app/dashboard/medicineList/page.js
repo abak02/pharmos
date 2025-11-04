@@ -4,7 +4,7 @@ import Pagination from '@/app/ui/medicinelist/pagination';
 import Search from '@/app/ui/search';
 import { lusitana } from '@/app/ui/fonts';
 import Table from '@/app/ui/medicinelist/Table';
-import { CardsSkeleton, InvoicesTableSkeleton, MedicinesTableSkeleton } from '@/app/ui/skeletons';
+import { MedicinesTableSkeleton } from '@/app/ui/skeletons';
 import { Suspense } from 'react';
 import { fetchMedicinePages} from '@/app/lib/data';
 export default async function page({searchParams}) {
