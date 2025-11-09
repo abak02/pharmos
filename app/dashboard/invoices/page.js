@@ -17,15 +17,15 @@ export default async function Page({ searchParams }) {
   const customerName = searchParams?.name;
   const status = searchParams?.status;
 
-  const totalPages = await fetchInvoicesPages(query, customerId);
+  const totalPages = await fetchInvoicesPages(query, customerId, status);
 
   return (
     <>
       <div className="flex w-full items-center justify-between">
-        <h1 className={`${lusitana.className} text-2xl`}>Invoices</h1>
+        <h1 className={`${lusitana.className} text-3xl text-blue-600`}>Invoices</h1>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
+      <div className="mt-2 flex items-center justify-between gap-2 md:mt-8">
         <Search placeholder="Search invoices..." />
         <CreateInvoice />
       </div>

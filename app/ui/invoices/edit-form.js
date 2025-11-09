@@ -21,36 +21,128 @@ import { lusitana } from "../fonts";
 import POSReceipt from "./pos-receipt";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import clsx from "clsx";
 
-export default function EditInvoiceForm({ invoice, customer, medicineList }) {
+export default function EditInvoiceForm({ invoiceSummary }) {
   const [showPreview, setShowPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [givenAmount, setGivenAmount] = useState("");
+  const [givenAmount, setGivenAmount] = useState(
+    invoiceSummary?.latest_given_amount?.toString() || ""
+  );
   const [changeAmount, setChangeAmount] = useState(0);
+  const [autoSelectedStatus, setAutoSelectedStatus] = useState(
+    invoiceSummary?.status || "pending"
+  );
+
   const router = useRouter();
 
-  const totalAmount = medicineList.reduce(
-    (sum, medicine) => sum + medicine.quantity * medicine.price_per_unit,
-    0
-  );
-  const discountAmount = invoice.discounted_amount;
-  const finalAmount = invoice.amount;
-  const changeAmountForPaidInvoices = invoice.given_amount-finalAmount;
-  const givenAmountForPaidInvoices = invoice.given_amount; 
+  // Calculate derived values - these can be after hooks but before conditional returns
+  const totalAmount =
+    invoiceSummary?.medicines?.reduce(
+      (sum, medicine) => sum + medicine.quantity * medicine.price_per_unit,
+      0
+    ) || 0;
+  const discountAmount = invoiceSummary?.discounted_amount || 0;
+  const finalAmount = invoiceSummary?.amount || 0;
+  const paidAmount = invoiceSummary?.paid_amount || 0;
+  const pendingAmount = finalAmount - paidAmount;
 
-  // Calculate change amount when given amount changes
+  // Check invoice status
+  const isPaidInvoice = invoiceSummary?.status === "paid";
+  const isPartialInvoice = invoiceSummary?.status === "partial";
+  const isPendingInvoice = invoiceSummary?.status === "pending";
+
+  // Payment calculation effect
   useEffect(() => {
+    if (!invoiceSummary) return;
+
+    const autoSetStatus = (givenAmount, changeAmount) => {
+      if (isPartialInvoice) {
+        // For partial invoices
+        if (givenAmount >= pendingAmount) {
+          setAutoSelectedStatus("paid");
+        } else if (givenAmount > 0) {
+          setAutoSelectedStatus("partial");
+        } else {
+          setAutoSelectedStatus(invoiceSummary.status);
+        }
+      } else {
+        // For pending invoices
+        if (givenAmount >= finalAmount) {
+          setAutoSelectedStatus("paid");
+        } else if (givenAmount > 0) {
+          setAutoSelectedStatus("partial");
+        } else {
+          setAutoSelectedStatus("pending");
+        }
+      }
+    };
+
     if (givenAmount && !isNaN(givenAmount)) {
       const given = parseFloat(givenAmount);
-      const change = given - finalAmount;
-      setChangeAmount(change >= 0 ? change : 0);
+      let change = 0;
+
+      if (isPartialInvoice) {
+        change = given - pendingAmount;
+        setChangeAmount(change >= 0 ? change : 0);
+      } else {
+        change = given - finalAmount;
+        setChangeAmount(change >= 0 ? change : 0);
+      }
+
+      autoSetStatus(given, change);
     } else {
       setChangeAmount(0);
+      if (invoiceSummary.status === "pending") {
+        setAutoSelectedStatus("pending");
+      }
     }
-  }, [givenAmount, finalAmount]);
+  }, [
+    givenAmount,
+    finalAmount,
+    pendingAmount,
+    isPartialInvoice,
+    invoiceSummary,
+  ]);
 
-  // Check if invoice is already paid
-  const isPaidInvoice = invoice.status === "paid";
+  // Function to handle manual status selection
+  const handleAutoStatus = (selectedStatus) => {
+    setAutoSelectedStatus(selectedStatus);
+
+    if (selectedStatus === "paid") {
+      const requiredAmount = isPartialInvoice ? pendingAmount : finalAmount;
+      if (!givenAmount || parseFloat(givenAmount) < requiredAmount) {
+        setGivenAmount(requiredAmount.toString());
+      }
+    }
+
+    if (selectedStatus === "pending") {
+      setGivenAmount("");
+      setChangeAmount(0);
+    }
+  };
+
+  // Function to get auto-status message
+  const getAutoStatusMessage = () => {
+    if (!givenAmount || parseFloat(givenAmount) === 0) {
+      return "No payment entered - will remain as Pending";
+    }
+
+    const given = parseFloat(givenAmount);
+    const requiredAmount = isPartialInvoice ? pendingAmount : finalAmount;
+
+    if (given >= requiredAmount) {
+      return `Payment covers full amount (${formatCurrency(
+        given
+      )} ≥ ${formatCurrency(requiredAmount)}) - will mark as Paid`;
+    } else if (given > 0) {
+      return `Partial payment (${formatCurrency(given)} of ${formatCurrency(
+        requiredAmount
+      )}) - will mark as Partial`;
+    }
+
+    return "Enter payment amount to auto-detect status";
+  };
 
   const handlePrint = () => {
     const printContent = document.getElementById("pos-receipt");
@@ -59,7 +151,7 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Invoice #${invoice.id}</title>
+          <title>Invoice #${invoiceSummary.id}</title>
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
             @media print {
@@ -90,9 +182,11 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
     setIsSubmitting(true);
 
     try {
-      const formData = new FormData(event.target);
+      const formData = new FormData();
+      formData.append("status", autoSelectedStatus);
+      formData.append("givenAmount", givenAmount || "0");
 
-      const result = await updateInvoice(invoice.id, formData);
+      const result = await updateInvoice(invoiceSummary.id, formData);
 
       if (result?.success) {
         toast.success("Invoice updated successfully!");
@@ -118,16 +212,20 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
           <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
             <span>Invoice ID:</span>
             <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
-              {invoice.id}
+              {invoiceSummary.id}
             </span>
             <span
-              className={`px-2 py-1 rounded text-xs font-medium ${
-                isPaidInvoice
-                  ? "bg-green-100 text-green-800"
-                  : "bg-orange-100 text-orange-800"
-              }`}
+              className={clsx("px-2 py-1 rounded text-xs font-medium", {
+                "bg-green-100 text-green-800": isPaidInvoice,
+                "bg-blue-100 text-blue-800": isPartialInvoice,
+                "bg-orange-100 text-orange-800": isPendingInvoice,
+              })}
             >
-              {isPaidInvoice ? "PAID" : "PENDING"}
+              {isPaidInvoice
+                ? "PAID"
+                : isPartialInvoice
+                ? "PARTIAL"
+                : "PENDING"}
             </span>
           </div>
         </div>
@@ -136,11 +234,28 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-center gap-2 text-green-800">
               <CheckIcon className="h-5 w-5" />
-              <span className="font-medium">This invoice has been paid.</span>
+              <span className="font-medium">
+                This invoice has been fully paid.
+              </span>
             </div>
             <p className="text-sm text-green-700 mt-1">
               Paid invoices cannot be modified. If you need to make changes,
               please create a new invoice.
+            </p>
+          </div>
+        )}
+
+        {isPartialInvoice && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-blue-800">
+              <CurrencyBangladeshiIcon className="h-5 w-5" />
+              <span className="font-medium">
+                This invoice has partial payment.
+              </span>
+            </div>
+            <p className="text-sm text-blue-700 mt-1">
+              Paid: {formatCurrency(paidAmount)} | Pending:{" "}
+              {formatCurrency(pendingAmount)}
             </p>
           </div>
         )}
@@ -160,7 +275,7 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
                   <span>Customer Name</span>
                 </div>
                 <p className="font-medium text-gray-900 text-sm sm:text-base">
-                  {customer.name}
+                  {invoiceSummary.customer_name}
                 </p>
               </div>
 
@@ -170,7 +285,7 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
                   <span>Phone Number</span>
                 </div>
                 <p className="font-medium text-gray-900 text-sm sm:text-base">
-                  {customer.phone_no}
+                  {invoiceSummary.customer_phone}
                 </p>
               </div>
 
@@ -180,20 +295,71 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
                   <span>Invoice Date</span>
                 </div>
                 <p className="font-medium text-gray-900 text-xs sm:text-sm">
-                  {formatDateTimeToLocal(invoice.date)}
+                  {formatDateTimeToLocal(invoiceSummary.date)}
+                </p>
+                <p className="font-medium text-gray-500 text-xs sm:text-sm">
+                  Last Updated: {formatDateTimeToLocal(invoiceSummary.time)}
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Payment Status Summary */}
+          {(isPaidInvoice || isPartialInvoice) && invoiceSummary && (
+            <div className="bg-white rounded-lg border border-gray-200 p-4 mt-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                Payment Summary
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                  <div className="text-lg font-bold text-gray-900">
+                    {formatCurrency(invoiceSummary.amount)}
+                  </div>
+                  <div className="text-gray-600">Total Amount</div>
+                </div>
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <div className="text-lg font-bold text-green-600">
+                    {formatCurrency(invoiceSummary.total_paid)}
+                  </div>
+                  <div className="text-green-600">Paid Amount</div>
+                </div>
+                {isPartialInvoice && (
+                  <div className="text-center p-3 bg-orange-50 rounded-lg">
+                    <div className="text-lg font-bold text-orange-600">
+                      {formatCurrency(invoiceSummary.remaining_amount)}
+                    </div>
+                    <div className="text-orange-600">Pending Amount</div>
+                  </div>
+                )}
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-lg font-bold text-blue-600">
+                    {formatCurrency(invoiceSummary.total_given || 0)}
+                  </div>
+                  <div className="text-blue-600">Total Given</div>
+                </div>
+              </div>
+
+              {(invoiceSummary.total_change || 0) > 0 && (
+                <div className="mt-3 text-center">
+                  <span className="text-sm text-gray-600">
+                    Total Change Returned:{" "}
+                    <span className="font-semibold text-blue-600">
+                      {formatCurrency(invoiceSummary.total_change)}
+                    </span>
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Purchased Medicines */}
           <div className="rounded-md bg-gray-50 p-4 md:p-6 mb-4 mt-4">
             <h2 className={`${lusitana.className} text-lg mb-2 text-blue-500`}>
               Purchased Medicines
             </h2>
-            {medicineList.map((medicine, index) => (
+            {invoiceSummary.medicines.map((medicine, index) => (
               <li
-                key={index}
+                key={medicine.id || index}
                 className="mb-4 p-3 bg-white rounded-lg border border-gray-200 list-none"
               >
                 <div className="md:hidden">
@@ -252,7 +418,6 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
                       {formatCurrency(
                         medicine.quantity * medicine.price_per_unit
                       )}{" "}
-                      Tk
                     </span>
                   </div>
                 </div>
@@ -281,45 +446,62 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
                   </span>
                 </div>
 
-                <div className="flex justify-between items-center pt-2 sm:pt-3 border-t border-gray-300">
-                  <span className="text-gray-900 font-semibold text-sm sm:text-base">
-                    Final Amount:
+                <div className="flex justify-between items-center">
+                  <span className="text-xs sm:text-sm text-gray-600">
+                    Total Amount:
                   </span>
-                  <span className="font-bold text-green-600 text-base sm:text-lg">
-                    {formatCurrency(finalAmount)}
+                  <span className="font-semibold text-gray-900 text-sm sm:text-base">
+                    {formatCurrency(invoiceSummary.amount)}
                   </span>
                 </div>
 
-                {isPaidInvoice && (
+                {/* Show previous payments and pending amount for partial invoices */}
+                {isPartialInvoice && (
                   <>
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-300">
                       <span className="text-xs sm:text-sm text-gray-600">
-                        Given Amount:
+                        Paid Amount:
                       </span>
-                      <span className="font-semibold text-yellow-600 text-sm sm:text-base">
-                        {formatCurrency(givenAmountForPaidInvoices)}
+                      <span className="font-semibold text-green-600 text-sm sm:text-base">
+                        {formatCurrency(paidAmount)}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center pt-2 sm:pt-3 border-t border-gray-300">
+
+                    <div className="flex justify-between items-center">
                       <span className="text-xs sm:text-sm text-gray-600">
-                        Change Amount:
+                        Pending Amount:
                       </span>
-                      <span className="font-semibold text-blue-600 text-sm sm:text-base">
-                        {formatCurrency(changeAmountForPaidInvoices)}
+                      <span className="font-semibold text-orange-600 text-sm sm:text-base">
+                        {formatCurrency(pendingAmount)}
                       </span>
                     </div>
                   </>
                 )}
 
-                {/* Payment Section - Only show for pending invoices */}
-                {!isPaidInvoice && (
+                <div className="flex justify-between items-center pt-2 sm:pt-3 border-t border-gray-300">
+                  <span className="text-gray-900 font-semibold text-sm sm:text-base">
+                    {isPartialInvoice ? "Amount Due:" : "Final Amount:"}
+                  </span>
+                  <span
+                    className={`font-bold text-sm sm:text-lg ${
+                      isPartialInvoice ? "text-orange-600" : "text-green-600"
+                    }`}
+                  >
+                    {formatCurrency(
+                      isPartialInvoice ? pendingAmount : finalAmount
+                    )}
+                  </span>
+                </div>
+
+                {/* Payment Section - Only show for pending/partial invoices */}
+                {(isPendingInvoice || isPartialInvoice) && (
                   <>
                     <div className="flex justify-between items-center py-1 pt-4">
                       <label
                         htmlFor="givenAmount"
                         className="text-xs sm:text-sm text-gray-600"
                       >
-                        Given Amount:
+                        Payment Amount:
                       </label>
                       <div className="relative">
                         <input
@@ -329,8 +511,8 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
                           placeholder="0"
                           value={givenAmount}
                           onChange={(e) => setGivenAmount(e.target.value)}
-                          className="w-24 rounded-md border border-gray-300 py-1.5 px-2 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                          min={finalAmount}
+                          className="w-24 rounded-md border border-gray-300 py-1.5 px-3 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          min={0}
                           step="1"
                         />
                         <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
@@ -347,18 +529,53 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
                         {formatCurrency(changeAmount)}
                       </span>
                     </div>
+
+                    {isPartialInvoice && (
+                      <div className="flex justify-between items-center text-xs text-orange-600">
+                        <span>Remaining after this payment:</span>
+                        <span className="font-semibold">
+                          {changeAmount > 0
+                            ? formatCurrency(0)
+                            : formatCurrency(
+                                pendingAmount - parseFloat(givenAmount || 0)
+                              )}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Show payment details for paid invoices */}
+                {isPaidInvoice && (
+                  <>
+                    <div className="flex justify-between items-center pt-4">
+                      <span className="text-xs sm:text-sm text-gray-600">
+                        Total Given Amount:
+                      </span>
+                      <span className="font-semibold text-yellow-600 text-sm sm:text-base">
+                        {formatCurrency(invoiceSummary.total_given)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs sm:text-sm text-gray-600">
+                        Total Change Amount:
+                      </span>
+                      <span className="font-semibold text-blue-600 text-sm sm:text-base">
+                        {formatCurrency(invoiceSummary.total_change)}
+                      </span>
+                    </div>
                   </>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Status Field - Only show for pending invoices */}
-          {!isPaidInvoice && (
+          {/* Status Field - Only show for pending/partial invoices */}
+          {(isPendingInvoice || isPartialInvoice) && (
             <div className="rounded-md bg-gray-50 p-4 md:p-6">
               <fieldset>
                 <legend className="mb-2 block text-sm font-medium">
-                  Set the invoice status
+                  Payment Status
                 </legend>
                 <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
                   <div className="flex gap-4">
@@ -368,7 +585,8 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
                         name="status"
                         type="radio"
                         value="pending"
-                        defaultChecked={invoice.status === "pending"}
+                        checked={autoSelectedStatus === "pending"}
+                        onChange={() => handleAutoStatus("pending")}
                         className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
                       />
                       <label
@@ -380,11 +598,29 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
                     </div>
                     <div className="flex items-center">
                       <input
+                        id="partial"
+                        name="status"
+                        type="radio"
+                        value="partial"
+                        checked={autoSelectedStatus === "partial"}
+                        onChange={() => handleAutoStatus("partial")}
+                        className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
+                      />
+                      <label
+                        htmlFor="partial"
+                        className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-100 border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600"
+                      >
+                        Partial <CurrencyBangladeshiIcon className="h-4 w-4" />
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
                         id="paid"
                         name="status"
                         type="radio"
                         value="paid"
-                        defaultChecked={invoice.status === "paid"}
+                        checked={autoSelectedStatus === "paid"}
+                        onChange={() => handleAutoStatus("paid")}
                         className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
                       />
                       <label
@@ -395,9 +631,21 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
                       </label>
                     </div>
                   </div>
+
+                  {/* Auto-status indicator */}
+                  <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Auto-detection:</span>
+                      <span className="text-yellow-700">
+                        {getAutoStatusMessage()}
+                      </span>
+                    </div>
+                  </div>
+
                   <p className="mt-2 text-xs text-gray-600">
-                    💡 When marking as `Paid`, enter the given amount above to
-                    calculate change.
+                    💡 The system will automatically determine the final status
+                    based on the payment amount. You can manually override by
+                    selecting a specific status.
                   </p>
                 </div>
               </fieldset>
@@ -471,10 +719,14 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
             </h3>
             <div className="flex justify-center">
               <POSReceipt
-                invoice={invoice}
-                customer={customer}
-                medicineList={medicineList}
+                invoice={invoiceSummary}
+                customer={{
+                  name: invoiceSummary.customer_name,
+                  phone_no: invoiceSummary.customer_phone,
+                }}
+                medicineList={invoiceSummary.medicines}
                 showPreview={true}
+                invoiceSummary={invoiceSummary}
               />
             </div>
             <div className="mt-4 text-center">
@@ -488,10 +740,14 @@ export default function EditInvoiceForm({ invoice, customer, medicineList }) {
         {/* Hidden POS Receipt Component for actual printing */}
         <div className="hidden">
           <POSReceipt
-            invoice={invoice}
-            customer={customer}
-            medicineList={medicineList}
+            invoice={invoiceSummary}
+            customer={{
+              name: invoiceSummary.customer_name,
+              phone_no: invoiceSummary.customer_phone,
+            }}
+            medicineList={invoiceSummary.medicines}
             showPreview={false}
+            invoiceSummary={invoiceSummary}
           />
         </div>
       </div>

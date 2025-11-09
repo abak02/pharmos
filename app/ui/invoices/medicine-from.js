@@ -31,8 +31,8 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
   const [changeAmount, setChangeAmount] = useState(0);
   const [errors, setErrors] = useState({});
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState("cash"); // 'cash' or 'credit'
-  const [invoiceStatus, setInvoiceStatus] = useState("paid");
+  const [autoSelectedStatus, setAutoSelectedStatus] = useState("pending");
+  const [remainingAmount, setRemainingAmount] = useState(0);
 
   // Memoize the price update function to prevent infinite loops
   const updateParentPrices = useCallback(() => {
@@ -43,7 +43,8 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
         discountPercentage: parseFloat(discount) || 0,
         givenAmount: parseFloat(givenAmount) || 0,
         changeAmount: parseFloat(changeAmount) || 0,
-        paymentMethod: paymentMethod,
+        remainingAmount: parseFloat(remainingAmount) || 0,
+        status: autoSelectedStatus,
       });
     }
   }, [
@@ -52,7 +53,8 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     discount,
     givenAmount,
     changeAmount,
-    paymentMethod,
+    remainingAmount,
+    autoSelectedStatus,
     onPriceUpdate,
   ]);
 
@@ -70,17 +72,74 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     return () => clearTimeout(timeoutId);
   }, [updateParentPrices]);
 
-  // Handle payment method change
-  const handlePaymentMethodChange = (method) => {
-    setPaymentMethod(method);
+  // Main calculation function
+  const calculateStatusAndAmounts = useCallback(() => {
+    const total = addedMedicines.reduce(
+      (acc, medicine) => acc + parseFloat(medicine.totalPrice),
+      0
+    );
+    setTotalPrice(total.toFixed(2));
 
-    // Reset given amount and change amount for credit sales
-    if (method === "credit") {
+    const discountAmount = discount ? (total * parseFloat(discount)) / 100 : 0;
+    const discounted = Math.ceil(total - discountAmount);
+    setDiscountedPrice(discounted.toFixed(2));
+    setDiscountAmount(discountAmount.toFixed(2));
+
+    const finalAmount = parseFloat(discounted.toFixed(2));
+    const given = parseFloat(givenAmount) || 0;
+
+    // Calculate change and remaining amounts
+    const change = Math.max(0, given - finalAmount);
+    const remaining = Math.max(0, finalAmount - given);
+    
+    setChangeAmount(change);
+    setRemainingAmount(remaining);
+
+    // Auto-determine status based on given amount
+    if (given === 0) {
+      setAutoSelectedStatus("pending");
+    } else if (given >= finalAmount) {
+      setAutoSelectedStatus("paid");
+    } else if (given > 0) {
+      setAutoSelectedStatus("partial");
+    } else {
+      setAutoSelectedStatus("pending");
+    }
+  }, [addedMedicines, discount, givenAmount]);
+
+  // Calculate prices and status
+  useEffect(() => {
+    calculateStatusAndAmounts();
+  }, [calculateStatusAndAmounts]);
+
+  // Handle given amount change
+  const handleGivenAmountChange = (amount) => {
+    setGivenAmount(amount);
+  };
+
+  // Handle manual status selection
+  const handleStatusChange = (status) => {
+    const finalAmount = parseFloat(discountedPrice) || 0;
+
+    setAutoSelectedStatus(status);
+    
+    if (status === "paid") {
+      // Set given amount to final amount if not already enough
+      if (!givenAmount || parseFloat(givenAmount) < finalAmount) {
+        setGivenAmount(finalAmount.toString());
+      }
+    } else if (status === "partial") {
+      // If no given amount set, set to 0 or keep current
+      if (!givenAmount || parseFloat(givenAmount) <= 0) {
+        setGivenAmount("0");
+      }
+    } else if (status === "pending") {
+      // Clear given amount for pending invoices
       setGivenAmount("");
-      setChangeAmount(0);
     }
   };
 
+  // Rest of your existing functions remain the same...
   const handleSearch = useDebouncedCallback(async (term) => {
     if (term && term.length >= 2) {
       const filteredMedicines =
@@ -148,7 +207,6 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     setId("");
     setErrors({});
 
-    // Call onAddMedicine after state update
     if (onAddMedicine) {
       onAddMedicine(updatedMedicines);
     }
@@ -178,35 +236,6 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     setErrors({});
   };
 
-  // Calculate prices without triggering infinite updates
-  useEffect(() => {
-    const total = addedMedicines.reduce(
-      (acc, medicine) => acc + parseFloat(medicine.totalPrice),
-      0
-    );
-    setTotalPrice(total.toFixed(2));
-
-    const discountAmount = discount ? (total * parseFloat(discount)) / 100 : 0;
-    const discounted = Math.ceil(total - discountAmount);
-    setDiscountedPrice(discounted.toFixed(2));
-    setDiscountAmount(discountAmount.toFixed(2));
-
-    // Only calculate change amount for cash payments
-    if (paymentMethod === "cash") {
-      const given = parseFloat(givenAmount) || 0;
-      setChangeAmount((given - discounted).toFixed(2));
-    } else {
-      setChangeAmount(0);
-    }
-  }, [addedMedicines, discount, givenAmount, paymentMethod]);
-
-  // Add this useEffect to sync status with payment method
-  useEffect(() => {
-    if (paymentMethod === "credit") {
-      setInvoiceStatus("pending");
-    }
-  }, [paymentMethod]);
-
   const getStockStatusStyle = (stockQuantity) => {
     if (stockQuantity > 10) {
       return { color: "green", text: `In Stock: ${stockQuantity}` };
@@ -223,6 +252,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
         Medicine List
       </p>
 
+      {/* Medicine input fields remain the same */}
       <div className="gap-4 mb-4 md:flex">
         <div className="relative flex-1">
           <label
@@ -368,55 +398,6 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
 
       <AddButton onClick={handleAddMedicine}></AddButton>
 
-      {/* Payment Method Selection */}
-      <div className="mt-4">
-        <fieldset>
-          <legend className="mb-2 block text-sm font-medium">
-            Payment Method *
-          </legend>
-          <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex items-center">
-                <input
-                  id="cash"
-                  name="paymentMethod"
-                  type="radio"
-                  value="cash"
-                  checked={paymentMethod === "cash"}
-                  onChange={() => handlePaymentMethodChange("cash")}
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                  required
-                />
-                <label
-                  htmlFor="cash"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-100 border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600"
-                >
-                  Cash Payment
-                </label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  id="credit"
-                  name="paymentMethod"
-                  type="radio"
-                  value="credit"
-                  checked={paymentMethod === "credit"}
-                  onChange={() => handlePaymentMethodChange("credit")}
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                  required
-                />
-                <label
-                  htmlFor="credit"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-orange-100 border border-orange-200 px-3 py-1.5 text-xs font-medium text-orange-600"
-                >
-                  Credit Sale
-                </label>
-              </div>
-            </div>
-          </div>
-        </fieldset>
-      </div>
-
       {/* Added Medicines Section */}
       <div className="mt-4">
         <h2 className={`${lusitana.className} text-xl mb-2 text-blue-500`}>
@@ -527,14 +508,12 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
 
         <hr className="my-4" />
 
-        {/* Total Price and Payment Section */}
+        {/* Simplified Payment Section */}
         <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div className="space-y-2 sm:space-y-3 max-w-md ml-auto">
             {/* Subtotal */}
             <div className="flex justify-between items-center">
-              <span className="text-xs sm:text-sm text-gray-600">
-                Subtotal:
-              </span>
+              <span className="text-xs sm:text-sm text-gray-600">Subtotal:</span>
               <span className="font-semibold text-gray-900 text-sm sm:text-base">
                 {formatCurrency(totalPrice)}
               </span>
@@ -542,10 +521,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
 
             {/* Discount Input */}
             <div className="flex justify-between items-center py-1">
-              <label
-                htmlFor="discount"
-                className="text-xs sm:text-sm text-gray-600"
-              >
+              <label htmlFor="discount" className="text-xs sm:text-sm text-gray-600">
                 Discount (%):
               </label>
               <div className="relative">
@@ -600,61 +576,70 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
               </span>
             </div>
 
-            {/* Given Amount Input - Only show for cash payments */}
-            {paymentMethod === "cash" && (
-              <>
-                <div className="flex justify-between items-center py-1">
-                  <label
-                    htmlFor="givenAmount"
-                    className="text-xs sm:text-sm text-gray-600"
-                  >
-                    Given Amount:
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      id="givenAmount"
-                      name="givenAmount"
-                      min={discountedPrice}
-                      step="1"
-                      placeholder="0"
-                      value={givenAmount}
-                      onChange={(e) => setGivenAmount(e.target.value)}
-                      className="w-24 rounded-md border border-gray-300 py-1.5 px-2 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    />
-                    <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
-                      TK
-                    </span>
-                  </div>
-                </div>
+            {/* Given Amount Input */}
+            <div className="flex justify-between items-center py-1">
+              <label htmlFor="givenAmount" className="text-xs sm:text-sm text-gray-600">
+                Given Amount:
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  id="givenAmount"
+                  name="givenAmount"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  value={givenAmount}
+                  onChange={(e) => handleGivenAmountChange(e.target.value)}
+                  className="w-24 rounded-md border border-gray-300 py-1.5 px-2 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
+                  TK
+                </span>
+              </div>
+            </div>
 
-                {/* Change Amount - Only show for cash payments */}
-                <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm text-gray-600">
-                    Change Amount:
-                  </span>
-                  <span className="font-semibold text-blue-600 text-sm sm:text-base">
-                    {formatCurrency(changeAmount >= 0 ? changeAmount : 0)}
-                  </span>
-                </div>
-              </>
+            {/* Dynamic Status Display */}
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm text-gray-600">Status:</span>
+              <span className={`font-semibold text-sm sm:text-base ${
+                autoSelectedStatus === "paid" 
+                  ? "text-green-600" 
+                  : autoSelectedStatus === "partial" 
+                  ? "text-blue-600" 
+                  : "text-orange-600"
+              }`}>
+                {autoSelectedStatus === "paid" && "Paid ✅"}
+                {autoSelectedStatus === "partial" && "Partial Payment"}
+                {autoSelectedStatus === "pending" && "Pending"}
+              </span>
+            </div>
+
+            {/* Change Amount for Paid invoices */}
+            {autoSelectedStatus === "paid" && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs sm:text-sm text-gray-600">Change Amount:</span>
+                <span className="font-semibold text-blue-600 text-sm sm:text-base">
+                  {formatCurrency(changeAmount >= 0 ? changeAmount : 0)}
+                </span>
+              </div>
             )}
 
-            {/* Credit Sale Notice */}
-            {paymentMethod === "credit" && (
-              <div className="flex justify-between items-center py-2">
-                <span className="text-xs sm:text-sm text-orange-600 font-medium">
-                  Credit Sale - Payment will be collected later
+            {/* Remaining Amount for Partial invoices */}
+            {autoSelectedStatus === "partial" && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs sm:text-sm text-gray-600">Remaining Amount:</span>
+                <span className="font-semibold text-orange-600 text-sm sm:text-base">
+                  {formatCurrency(remainingAmount)}
                 </span>
               </div>
             )}
           </div>
         </div>
 
+        {/* Invoice Status Section */}
         <fieldset className="mt-6">
-          <legend className="mb-2 block text-sm font-medium">
-            Invoice Status *
-          </legend>
+          <legend className="mb-2 block text-sm font-medium">Invoice Status *</legend>
           <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Pending Status */}
@@ -664,20 +649,36 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                   name="status"
                   type="radio"
                   value="pending"
-                  checked={invoiceStatus === "pending"}
-                  onChange={(e) => setInvoiceStatus(e.target.value)}
+                  checked={autoSelectedStatus === "pending"}
+                  onChange={(e) => handleStatusChange(e.target.value)}
                   className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
                   required
                 />
                 <label
                   htmlFor="pending"
-                  className={`ml-2 flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${
-                    paymentMethod === "credit"
-                      ? "bg-orange-100 border-orange-200 text-orange-600"
-                      : "bg-orange-100 border-red-200 text-red-600"
-                  }`}
+                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-orange-100 border border-orange-200 px-3 py-1.5 text-xs font-medium text-orange-600"
                 >
                   Pending <ClockIcon className="h-4 w-4" />
+                </label>
+              </div>
+
+              {/* Partial Status */}
+              <div className="flex items-center">
+                <input
+                  id="partial"
+                  name="status"
+                  type="radio"
+                  value="partial"
+                  checked={autoSelectedStatus === "partial"}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
+                  required
+                />
+                <label
+                  htmlFor="partial"
+                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-100 border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600"
+                >
+                  Partial <CurrencyBangladeshiIcon className="h-4 w-4" />
                 </label>
               </div>
 
@@ -688,23 +689,14 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                   name="status"
                   type="radio"
                   value="paid"
-                  checked={invoiceStatus === "paid"}
-                  onChange={(e) => setInvoiceStatus(e.target.value)}
-                  className={`h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2 ${
-                    paymentMethod === "credit"
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
-                  }`}
+                  checked={autoSelectedStatus === "paid"}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
                   required
-                  disabled={paymentMethod === "credit"}
                 />
                 <label
                   htmlFor="paid"
-                  className={`ml-2 flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
-                    paymentMethod === "credit"
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-green-500 text-white"
-                  }`}
+                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-green-500 px-3 py-1.5 text-xs font-medium text-white"
                 >
                   Paid <CheckIcon className="h-4 w-4" />
                 </label>
@@ -712,21 +704,26 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
             </div>
 
             {/* Status Help Text */}
-            {paymentMethod === "credit" ? (
-              <p className="mt-2 text-xs text-orange-600">
-                💡 Credit sales are automatically set to `Pending` status
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-gray-600">
-                💡 Cash sales can be marked as `Paid` or `Pending`
-              </p>
-            )}
+            <div className="mt-2 text-xs">
+              {autoSelectedStatus === "partial" ? (
+                <p className="text-blue-600">
+                  💡 Customer paid {formatCurrency(givenAmount)} of {formatCurrency(discountedPrice)}. Remaining: {formatCurrency(remainingAmount)}
+                </p>
+              ) : autoSelectedStatus === "paid" ? (
+                <p className="text-green-600">
+                  💡 Full payment received. Change: {formatCurrency(changeAmount)}
+                </p>
+              ) : (
+                <p className="text-orange-600">
+                  💡 No payment received - Invoice will be pending
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* Hidden input to ensure status is always submitted */}
-          {/* Add these hidden inputs near your other form fields */}
-          <input type="hidden" name="status" value={invoiceStatus} />
-          <input type="hidden" name="paymentMethod" value={paymentMethod} />
+          {/* Hidden inputs for form submission */}
+          <input type="hidden" name="status" value={autoSelectedStatus} />
+          <input type="hidden" name="givenAmount" value={givenAmount} />
         </fieldset>
       </div>
     </>

@@ -1,16 +1,15 @@
-'use server'
-import { sql } from '@vercel/postgres';
-import { unstable_noStore as noStore } from 'next/cache'
-import { formatCurrency } from './utils';
-
+"use server";
+import { sql } from "@vercel/postgres";
+import { unstable_noStore as noStore } from "next/cache";
+import { formatCurrency } from "./utils";
 
 // Define constants at the top
 const ITEMS_PER_PAGE = 40;
-const CUSTOMER_PER_PAGE = 10;
-const INVOICES_PER_PAGE = 15;
+const CUSTOMER_PER_PAGE = 25;
+const INVOICES_PER_PAGE = 25;
 const SHOP_PER_PAGE = 40;
 
-
+// Medicine functions remain the same
 export async function fetchMedicine() {
   noStore();
   try {
@@ -28,14 +27,14 @@ export async function fetchMedicine() {
         ORDER BY ml.brandname ASC
       `;
 
-    const medicine = data.rows.map(med => ({
+    const medicine = data.rows.map((med) => ({
       ...med,
       price: med.price / 100, // convert from cents to taka
     }));
     return medicine;
   } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch all medicine.');
+    console.error("Database Error:", err);
+    throw new Error("Failed to fetch all medicine.");
   }
 }
 
@@ -63,16 +62,14 @@ export async function fetchMedicineById(id) {
       price: medicine.price / 100, // convert from cents to taka
     };
   } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch medicine by id.');
+    console.error("Database Error:", err);
+    throw new Error("Failed to fetch medicine by id.");
   }
 }
 
 export async function fetchMedicinePages(query) {
   noStore();
   try {
-    
-    
     const count = await sql`
       SELECT COUNT(*)
       FROM medicinelist ml
@@ -82,20 +79,16 @@ export async function fetchMedicinePages(query) {
         ml.genericname ILIKE ${`%${query}%`}
     `;
 
-   
-    
     const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
-    
-    
     return totalPages;
   } catch (error) {
-    console.error('Database Error Details:', {
+    console.error("Database Error Details:", {
       message: error.message,
       code: error.code,
       detail: error.detail,
-      stack: error.stack
+      stack: error.stack,
     });
-    throw new Error('Failed to fetch total number of medicine pages.');
+    throw new Error("Failed to fetch total number of medicine pages.");
   }
 }
 
@@ -123,13 +116,13 @@ export async function fetchFilteredMedicine(query, currentPage) {
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
     `;
 
-    return medicines.rows.map(med => ({
+    return medicines.rows.map((med) => ({
       ...med,
       price: med.price / 100, // convert from cents to taka
     }));
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch medicine list.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch medicine list.");
   }
 }
 
@@ -154,13 +147,13 @@ export async function fetchFilteredMedicinebyBrandName(query, currentPage) {
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
     `;
 
-    return medicines.rows.map(med => ({
+    return medicines.rows.map((med) => ({
       ...med,
       price: med.price / 100, // convert from cents to taka
     }));
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch medicine list by brand name.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch medicine list by brand name.");
   }
 }
 
@@ -180,17 +173,16 @@ export async function fetchFilteredMedicineForSuggestion(query) {
       LIMIT 20
     `;
 
-    return medicines.rows.map(med => ({
+    return medicines.rows.map((med) => ({
       ...med,
       price: med.price / 100, // convert from cents to taka
     }));
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch medicine list for suggestion.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch medicine list for suggestion.");
   }
 }
 
-// Optimized medicine search with stock - now will use indexes
 export async function fetchFilteredMedicineWithStockForSuggestion(query) {
   noStore();
   try {
@@ -209,20 +201,18 @@ export async function fetchFilteredMedicineWithStockForSuggestion(query) {
       LIMIT 20
     `;
 
-    return medicines.rows.map(med => ({
+    return medicines.rows.map((med) => ({
       ...med,
       price: med.price / 100, // convert from cents to taka
       stock_quantity: med.stock_quantity || 0,
     }));
   } catch (error) {
-    console.error('Database Error:', error);
+    console.error("Database Error:", error);
     return [];
   }
 }
 
 // Shop inventory related functions
-
-
 export async function fetchShopPages(query) {
   noStore();
   try {
@@ -237,8 +227,8 @@ export async function fetchShopPages(query) {
     const totalPages = Math.ceil(Number(count.rows[0].count) / SHOP_PER_PAGE);
     return totalPages;
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of shop items.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch total number of shop items.");
   }
 }
 
@@ -264,14 +254,14 @@ export async function fetchShopMedicines(query, currentPage) {
       ORDER BY ml.brandname ASC
       LIMIT ${SHOP_PER_PAGE} OFFSET ${offset}
     `;
-    
-    return data.rows.map(med => ({
+
+    return data.rows.map((med) => ({
       ...med,
       price: med.price / 100, // convert from cents to taka
     }));
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch shop medicines.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch shop medicines.");
   }
 }
 
@@ -289,8 +279,8 @@ export async function fetchShopMedicinesById(id) {
     const shopMedicine = data.rows[0];
     return shopMedicine;
   } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch shop medicine.');
+    console.error("Database Error:", err);
+    throw new Error("Failed to fetch shop medicine.");
   }
 }
 
@@ -311,11 +301,11 @@ export async function fetchManufacturersWithLowStock() {
       ORDER BY low_stock_count DESC, name ASC
       LIMIT 50
     `;
-    
+
     return data.rows;
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch manufacturers.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch manufacturers.");
   }
 }
 
@@ -341,19 +331,18 @@ export async function fetchLowStockMedicinesByManufacturer(manufacturerName) {
         ml.brandname ASC
       LIMIT 100
     `;
-    
-    return data.rows.map(med => ({
+
+    return data.rows.map((med) => ({
       ...med,
       price: med.price / 100, // convert from cents to taka
     }));
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch medicines by manufacturer.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch medicines by manufacturer.");
   }
 }
 
-
-
+// Customer functions
 export async function fetchCustomerPages(query) {
   noStore();
   try {
@@ -363,11 +352,13 @@ export async function fetchCustomerPages(query) {
       name ILIKE ${`%${query}%`} OR
       phone_no ILIKE ${`%${query}%`} 
     `;
-    const totalPages = Math.ceil(Number(count.rows[0].count) / CUSTOMER_PER_PAGE);
+    const totalPages = Math.ceil(
+      Number(count.rows[0].count) / CUSTOMER_PER_PAGE
+    );
     return totalPages;
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of customers.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch total number of customers.");
   }
 }
 
@@ -384,8 +375,8 @@ export async function fetchCustomers() {
     const customers = data.rows;
     return customers;
   } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch all customers.');
+    console.error("Database Error:", err);
+    throw new Error("Failed to fetch all customers.");
   }
 }
 
@@ -408,8 +399,8 @@ export async function fetchCustomer(query) {
     const customers = data.rows;
     return customers;
   } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch all customers.');
+    console.error("Database Error:", err);
+    throw new Error("Failed to fetch all customers.");
   }
 }
 
@@ -419,47 +410,53 @@ export async function fetchFilteredCustomers(query, currentPage) {
 
   try {
     const data = await sql`
-		SELECT
-		  customers.id,
-		  customers.name,
-		  customers.phone_no,
-		  COUNT(invoices.id) AS total_invoices,
-		  SUM(CASE WHEN invoices.status = 'pending' THEN invoices.amount ELSE 0 END) AS total_pending,
-		  SUM(CASE WHEN invoices.status = 'paid' THEN invoices.amount ELSE 0 END) AS total_paid
-		FROM customers
-		LEFT JOIN invoices ON customers.id = invoices.customer_id
-		WHERE
-		  customers.name ILIKE ${`%${query}%`} OR
-        customers.phone_no ILIKE ${`%${query}%`}
-		GROUP BY customers.id, customers.name, customers.phone_no
-		ORDER BY customers.name ASC
-    LIMIT ${CUSTOMER_PER_PAGE} OFFSET ${offset}
-	  `;
+      SELECT
+        c.id,
+        c.name,
+        c.phone_no,
+        COUNT(i.id) AS total_invoices,
+        SUM(CASE WHEN i.status = 'pending' THEN i.amount ELSE 0 END) AS total_pending_cents,
+        SUM(CASE WHEN i.status = 'paid' THEN i.amount ELSE 0 END) AS total_paid_cents,
+        SUM(CASE WHEN i.status = 'partial' THEN (i.amount - COALESCE(i.paid_amount, 0)) ELSE 0 END) AS total_partial_cents
+      FROM customers c
+      LEFT JOIN invoices i ON c.id = i.customer_id
+      WHERE
+        c.name ILIKE ${`%${query}%`} OR
+        c.phone_no ILIKE ${`%${query}%`}
+      GROUP BY c.id, c.name, c.phone_no
+      ORDER BY c.name ASC
+      LIMIT ${CUSTOMER_PER_PAGE} OFFSET ${offset}
+    `;
 
     const customers = data.rows.map((customer) => ({
       ...customer,
-      total_pending: customer.total_pending / 100,
-      total_paid: customer.total_paid / 100,
+      total_pending: (customer.total_pending_cents || 0) / 100,
+      total_paid: (customer.total_paid_cents || 0) / 100,
+      total_partial: (customer.total_partial_cents || 0) / 100,
     }));
 
     return customers;
   } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch customer table.');
+    console.error("Database Error:", err);
+    throw new Error("Failed to fetch customer table.");
   }
 }
 
-
-// app/lib/data.js
-
-export async function fetchInvoicesPages(query, customerId = null, status = null) {
+// Invoice functions - UPDATED for new database structure
+export async function fetchInvoicesPages(
+  query,
+  customerId = null,
+  status = null
+) {
   noStore();
   try {
     let whereConditions = [];
     let queryParams = [];
 
     if (customerId) {
-      whereConditions.push(`invoices.customer_id = $${whereConditions.length + 1}`);
+      whereConditions.push(
+        `invoices.customer_id = $${whereConditions.length + 1}`
+      );
       queryParams.push(customerId);
     }
 
@@ -480,9 +477,10 @@ export async function fetchInvoicesPages(query, customerId = null, status = null
       queryParams.push(`%${query}%`);
     }
 
-    const whereClause = whereConditions.length > 0 
-      ? `WHERE ${whereConditions.join(' AND ')}` 
-      : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(" AND ")}`
+        : "";
 
     const countQuery = {
       text: `
@@ -491,19 +489,26 @@ export async function fetchInvoicesPages(query, customerId = null, status = null
         JOIN customers ON invoices.customer_id = customers.id
         ${whereClause}
       `,
-      values: queryParams
+      values: queryParams,
     };
 
     const count = await sql.query(countQuery);
-    const totalPages = Math.ceil(Number(count.rows[0].count) / INVOICES_PER_PAGE);
+    const totalPages = Math.ceil(
+      Number(count.rows[0].count) / INVOICES_PER_PAGE
+    );
     return totalPages;
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of invoices.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch total number of invoices.");
   }
 }
 
-export async function fetchFilteredInvoices(query, currentPage, customerId = null, status = null) {
+export async function fetchFilteredInvoices(
+  query,
+  currentPage,
+  customerId = null,
+  status = 'all'
+) {
   noStore();
   const offset = (currentPage - 1) * INVOICES_PER_PAGE;
 
@@ -512,7 +517,9 @@ export async function fetchFilteredInvoices(query, currentPage, customerId = nul
     let queryParams = [];
 
     if (customerId) {
-      whereConditions.push(`invoices.customer_id = $${whereConditions.length + 1}`);
+      whereConditions.push(
+        `invoices.customer_id = $${whereConditions.length + 1}`
+      );
       queryParams.push(customerId);
     }
 
@@ -533,9 +540,10 @@ export async function fetchFilteredInvoices(query, currentPage, customerId = nul
       queryParams.push(`%${query}%`);
     }
 
-    const whereClause = whereConditions.length > 0 
-      ? `WHERE ${whereConditions.join(' AND ')}` 
-      : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(" AND ")}`
+        : "";
 
     const invoicesQuery = {
       text: `
@@ -543,8 +551,9 @@ export async function fetchFilteredInvoices(query, currentPage, customerId = nul
           invoices.id,
           invoices.amount,
           invoices.date,
-          invoices.given_amount,
           invoices.status,
+          invoices.paid_amount,
+          invoices.discounted_amount,
           customers.name,
           customers.phone_no
         FROM invoices
@@ -553,19 +562,25 @@ export async function fetchFilteredInvoices(query, currentPage, customerId = nul
         ORDER BY invoices.date DESC
         LIMIT ${INVOICES_PER_PAGE} OFFSET ${offset}
       `,
-      values: queryParams
+      values: queryParams,
     };
 
     const invoices = await sql.query(invoicesQuery);
 
-    return invoices.rows.map(invoice => ({
+    return invoices.rows.map((invoice) => ({
       ...invoice,
       amount: invoice.amount / 100,
-      given_amount: invoice.given_amount / 100,
+      paid_amount: invoice.paid_amount / 100,
+      discounted_amount: invoice.discounted_amount / 100,
+      // Calculate remaining amount for partial invoices
+      remaining_amount:
+        invoice.status === "partial"
+          ? (invoice.amount - invoice.paid_amount) / 100
+          : 0,
     }));
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch invoices.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch invoices.");
   }
 }
 
@@ -573,7 +588,14 @@ export async function fetchLatestInvoices() {
   noStore();
   try {
     const data = await sql`
-      SELECT invoices.amount, invoices.date, customers.name, customers.phone_no, invoices.id
+      SELECT 
+        invoices.amount, 
+        invoices.date, 
+        invoices.status,
+        invoices.paid_amount,
+        customers.name, 
+        customers.phone_no, 
+        invoices.id
       FROM invoices
       JOIN customers ON invoices.customer_id = customers.id
       ORDER BY invoices.date DESC
@@ -581,24 +603,31 @@ export async function fetchLatestInvoices() {
 
     const latestInvoices = data.rows.map((invoice) => ({
       ...invoice,
-      amount: invoice.amount/100,
+      amount: invoice.amount / 100,
+      paid_amount: invoice.paid_amount / 100,
+      remaining_amount:
+        invoice.status === "partial"
+          ? (invoice.amount - invoice.paid_amount) / 100
+          : 0,
     }));
     return latestInvoices;
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the latest invoices.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch the latest invoices.");
   }
 }
-
 export async function fetchCardData() {
   noStore();
   try {
     const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
     const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
-    const invoiceStatusPromise = sql`SELECT
-         SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
-         SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-         FROM invoices`;
+    const invoiceStatusPromise = sql`
+      SELECT
+        SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
+        SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending",
+        SUM(CASE WHEN status = 'partial' THEN (amount - paid_amount) ELSE 0 END) AS "partial_remaining"
+      FROM invoices
+    `;
 
     const data = await Promise.all([
       invoiceCountPromise,
@@ -606,20 +635,26 @@ export async function fetchCardData() {
       invoiceStatusPromise,
     ]);
 
-    const numberOfInvoices = Number(data[0].rows[0].count ?? '0');
-    const numberOfCustomers = Number(data[1].rows[0].count ?? '0');
-    const totalPaidInvoices = formatCurrency(data[2].rows[0].paid/100 ?? '0');
-    const totalPendingInvoices = formatCurrency(data[2].rows[0].pending/100 ?? '0');
+    const numberOfInvoices = Number(data[0].rows[0].count ?? "0");
+    const numberOfCustomers = Number(data[1].rows[0].count ?? "0");
+    const totalPaidInvoices = formatCurrency(data[2].rows[0].paid / 100 ?? "0");
+    const totalPendingInvoices = formatCurrency(
+      data[2].rows[0].pending / 100 ?? "0"
+    );
+    const totalPartialRemaining = formatCurrency(
+      data[2].rows[0].partial_remaining / 100 ?? "0"
+    );
 
     return {
       numberOfCustomers,
       numberOfInvoices,
       totalPaidInvoices,
       totalPendingInvoices,
+      totalPartialRemaining,
     };
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch card data.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch card data.");
   }
 }
 
@@ -634,17 +669,22 @@ export async function fetchInvoiceById(id) {
         invoices.status,
         invoices.date,
         invoices.time,
-        invoices.given_amount,
-        invoices.discounted_amount
+        invoices.discounted_amount,
+        invoices.paid_amount,
+        customers.name,
+        customers.phone_no
       FROM invoices
+      JOIN customers ON invoices.customer_id = customers.id
       WHERE invoices.id = ${id};
     `;
 
     const invoice = data.rows.map((invoice) => ({
       ...invoice,
-      amount: invoice.amount / 100, // convert from cents to taka
-      given_amount: invoice.given_amount / 100, // convert from cents to taka
-      discounted_amount: invoice.discounted_amount / 100, // convert from cents to taka
+      amount: invoice.amount / 100,
+      discounted_amount: invoice.discounted_amount / 100,
+      paid_amount: invoice.paid_amount / 100,
+      // Calculate pending amount for partial invoices
+      pending_amount: invoice.status === 'partial' ? (invoice.amount - invoice.paid_amount) / 100 : 0,
     }));
 
     return invoice[0];
@@ -664,19 +704,21 @@ export async function fetchInvoices() {
         invoices.amount,
         invoices.status,
         invoices.date,
-        invoices.time
+        invoices.time,
+        invoices.paid_amount
       FROM invoices;
     `;
 
     const invoices = data.rows.map((invoice) => ({
       ...invoice,
-      amount: invoice.amount / 100, // convert from cents to taka
+      amount: invoice.amount / 100,
+      paid_amount: invoice.paid_amount / 100,
     }));
 
     return invoices;
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch invoices.');
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch invoices.");
   }
 }
 
@@ -694,8 +736,8 @@ export async function fetchCustomerById(id) {
     const customers = data.rows[0];
     return customers;
   } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch customer by id.');
+    console.error("Database Error:", err);
+    throw new Error("Failed to fetch customer by id.");
   }
 }
 
@@ -715,14 +757,136 @@ export async function fetchMedicineByInvoiceID(id) {
       im.invoice_id = ${id};
     `;
 
-    const medicinelist = data.rows.map(med => ({
+    const medicinelist = data.rows.map((med) => ({
       ...med,
-      price_per_unit: med.price_per_unit / 100, // convert from cents to taka
+      price_per_unit: med.price_per_unit / 100,
     }));
-    
+
     return medicinelist;
   } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch medicines by invoice id.');
+    console.error("Database Error:", err);
+    throw new Error("Failed to fetch medicines by invoice id.");
+  }
+}
+
+// NEW: Fetch payment history for an invoice
+export async function fetchPaymentsByInvoiceId(invoiceId) {
+  noStore();
+  try {
+    const data = await sql`
+      SELECT
+        id,
+        amount,
+        given_amount,
+        payment_date,
+        payment_time,
+        created_at
+      FROM payments
+      WHERE invoice_id = ${invoiceId}
+      ORDER BY created_at DESC
+    `;
+
+    return data.rows.map((payment) => ({
+      ...payment,
+      amount: payment.amount / 100,
+      given_amount: payment.given_amount / 100,
+      change_amount: (payment.given_amount - payment.amount) / 100,
+    }));
+  } catch (error) {
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch payment history.");
+  }
+}
+
+export async function fetchInvoiceSummary(invoiceId) {
+  noStore();
+  try {
+    // First query for invoice and customer details
+    const invoiceData = await sql`
+      SELECT 
+        i.*,
+        c.name as customer_name,
+        c.phone_no as customer_phone,
+        COUNT(p.id) as payment_count,
+        COALESCE(SUM(p.amount), 0) as total_paid_cents,
+        COALESCE(SUM(p.given_amount), 0) as total_given_cents,
+        COALESCE(SUM(p.given_amount - p.amount), 0) as total_change_cents
+      FROM invoices i
+      JOIN customers c ON i.customer_id = c.id
+      LEFT JOIN payments p ON i.id = p.invoice_id
+      WHERE i.id = ${invoiceId}
+      GROUP BY i.id, c.id
+    `;
+
+    if (invoiceData.rows.length === 0) {
+      throw new Error('Invoice not found');
+    }
+
+    const row = invoiceData.rows[0];
+
+    // Second query for medicines
+    const medicinesData = await sql`
+      SELECT 
+        im.medicine_id as id,
+        im.medicine_id,
+        ml.brandname,
+        ml.dosagedescription,
+        im.quantity,
+        im.price_per_unit
+      FROM invoice_medicines im
+      JOIN medicinelist ml ON im.medicine_id = ml.id
+      WHERE im.invoice_id = ${invoiceId}
+      ORDER BY ml.brandname
+    `;
+
+    // Third query for payments
+    const paymentsData = await sql`
+      SELECT 
+        id,
+        amount,
+        given_amount,
+        payment_date,
+        payment_time,
+        created_at
+      FROM payments
+      WHERE invoice_id = ${invoiceId}
+      ORDER BY created_at DESC
+    `;
+
+    const processedPayments = paymentsData.rows.map(payment => ({
+      ...payment,
+      amount: payment.amount / 100,
+      given_amount: payment.given_amount / 100,
+      change_amount: (payment.given_amount - payment.amount) / 100
+    }));
+
+    const processedMedicines = medicinesData.rows.map(medicine => ({
+      ...medicine,
+      price_per_unit: medicine.price_per_unit / 100
+    }));
+
+    return {
+      id: row.id,
+      customer_id: row.customer_id,
+      amount: row.amount / 100,
+      status: row.status,
+      date: row.date,
+      time: row.time,
+      discounted_amount: (row.discounted_amount || 0) / 100,
+      paid_amount: (row.paid_amount || 0) / 100,
+      customer_name: row.customer_name,
+      customer_phone: row.customer_phone,
+      total_paid: row.total_paid_cents / 100,
+      total_given: row.total_given_cents / 100,
+      total_change: row.total_change_cents / 100,
+      remaining_amount: Math.max(0, (row.amount - row.total_paid_cents) / 100),
+      payment_count: parseInt(row.payment_count) || 0,
+      payments: processedPayments,
+      medicines: processedMedicines,
+      latest_given_amount: processedPayments.length > 0 ? processedPayments[0].given_amount : 0
+    };
+  } catch (error) {
+    console.error("Database Error:", error);
+    throw new Error("Failed to fetch invoice summary.");
   }
 }

@@ -19,7 +19,7 @@ export default async function Page() {
       
       <div className="w-full">
         <div className="flex w-full items-center justify-between">
-          <h1 className={` ${lusitana.className} text-2xl font-bold text-blue-500`}>📋 Order List - By Manufacturer</h1>
+          <h1 className={` ${lusitana.className} text-2xl font-bold text-blue-600`}>📋 Order List - By Manufacturer</h1>
         </div>
         
         <div className="mt-4">

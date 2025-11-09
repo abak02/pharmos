@@ -88,7 +88,7 @@ export default function CreateInvoice() {
                 setTimeout(() => {
                     router.push('/dashboard/invoices');
                     router.refresh();
-                }, 1500);
+                }, 1000);
             } else {
                 throw new Error(result?.message || 'Failed to create invoice');
             }

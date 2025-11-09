@@ -3,7 +3,7 @@
 import { formatDateTimeToLocal, formatPrintCurrency, formatCurrency } from '@/app/lib/utils';
 
 
-export default function POSReceipt({ invoice, customer, medicineList, showPreview = false }) {
+export default function POSReceipt({ invoice, customer, medicineList, showPreview = false, invoiceSummary }) {
   return (
     <div
       id="pos-receipt"
@@ -102,12 +102,12 @@ export default function POSReceipt({ invoice, customer, medicineList, showPrevie
 
         <div className="flex justify-between">
           <span>Paid:</span>
-          <span>{formatCurrency(invoice.given_amount)}</span>
+          <span>{formatCurrency(invoiceSummary.total_given)}</span>
         </div>
 
         <div className="flex justify-between font-bold border-t border-black pt-[1px]">
           <span>Change:</span>
-          <span>{formatCurrency(invoice.given_amount - invoice.amount)}</span>
+          <span>{formatCurrency(invoiceSummary.total_change)}</span>
         </div>
       </div>
 

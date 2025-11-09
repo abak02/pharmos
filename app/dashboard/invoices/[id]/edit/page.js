@@ -1,6 +1,6 @@
 import Form from '@/app/ui/invoices/edit-form';
 
-import { fetchInvoiceById,fetchCustomers, fetchCustomerById, fetchMedicineByInvoiceID } from '@/app/lib/data';
+import { fetchInvoiceById, fetchCustomerById, fetchMedicineByInvoiceID, fetchInvoiceSummary } from '@/app/lib/data';
  import { notFound } from 'next/navigation';
 import Breadcrumbs from '@/app/ui/invoices/breadcrumbs';
 export default async function Page({params}) {
@@ -8,6 +8,7 @@ export default async function Page({params}) {
     const invoice = await fetchInvoiceById(id);
     const customer = await fetchCustomerById(invoice?.customer_id);
     const medicineList = await fetchMedicineByInvoiceID(id);
+    const invoiceSummary = await fetchInvoiceSummary(id);
     if(!invoice){
         notFound();
     }
@@ -23,7 +24,7 @@ export default async function Page({params}) {
           },
         ]}
       />
-      <Form invoice={invoice}  customer={customer} medicineList={medicineList} />
+      <Form invoice={invoice}  customer={customer} medicineList={medicineList} invoiceSummary={invoiceSummary} />
     </main>
   );
 }
