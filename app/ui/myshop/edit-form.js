@@ -6,6 +6,8 @@ import {
   HashtagIcon,
   PencilSquareIcon,
   XMarkIcon,
+  MedicalIcon,
+  HeartIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { lusitana } from "../fonts";
@@ -36,30 +38,68 @@ export default function ShopInventoryForm({
       className="rounded-md bg-gray-50 p-4 md:p-6"
     >
       {/* Medicine Details Section */}
-      <div className="rounded-md bg-gray-50 p-4 md:p-6 mb-4 border border-gray-200">
-        <h2
-          className={`text-xl mb-2 text-blue-500 font-semibold ${lusitana.className}`}
-        >
-          Medicine Details
-        </h2>
+      <div className="rounded-2xl bg-white p-6 mb-6 border border-blue-100 shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
 
-        <div className="mb-2">
-          <h6>
-            <span className="font-bold">Brand Name:</span>{" "}
-            {medicineDetails?.brandname || "N/A"}
-          </h6>
-          <h6>
-            <span className="font-bold">Generic Name:</span>{" "}
-            {medicineDetails?.genericname || "N/A"}
-          </h6>
-          <h6>
-            <span className="font-bold">Dosage Form:</span>{" "}
-            {medicineDetails?.dosagedescription || "N/A"}
-          </h6>
-          <h6>
-            <span className="font-bold">Manufacturer:</span>{" "}
-            {medicineDetails?.nameofthemanufacturer || "N/A"}
-          </h6>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-blue-50 rounded-lg">
+            <HeartIcon className="h-6 w-6 text-blue-600" />
+          </div>
+          <h2
+            className={`text-2xl font-bold text-gray-900 ${lusitana.className}`}
+          >
+            Pharmaceutical Details
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-blue-600 mb-1">
+                Brand Name
+              </label>
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="font-medium text-gray-900">
+                  {medicineDetails?.brandname || "Not available"}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-green-600 mb-1">
+                Generic Name
+              </label>
+              <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                <p className="font-medium text-gray-900">
+                  {medicineDetails?.genericname || "Not available"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-purple-600 mb-1">
+                Dosage Form
+              </label>
+              <div className="p-3 bg-purple-50 rounded-lg border border-purple-100">
+                <p className="font-medium text-gray-900">
+                  {medicineDetails?.dosagedescription || "Not available"}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-orange-600 mb-1">
+                Manufacturer
+              </label>
+              <div className="p-3 bg-orange-50 rounded-lg border border-orange-100">
+                <p className="font-medium text-gray-900">
+                  {medicineDetails?.nameofthemanufacturer || "Not available"}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -80,7 +120,9 @@ export default function ShopInventoryForm({
             <span className="font-semibold">update price only</span>, set the
             quantity to <span className="font-semibold">0</span>.<br />
             If you insert the quantity by mistake, please{" "}
-            <span className="font-semibold">delete the medicine from the shop inventory</span>{" "}
+            <span className="font-semibold">
+              delete the medicine from the shop inventory
+            </span>{" "}
             and add it again.
           </p>
         </div>
@@ -94,7 +136,7 @@ export default function ShopInventoryForm({
             Quantity to Add
           </label>
 
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-md text-blue-500 mb-2">
             Current stock:{" "}
             <span className="font-semibold">{shopMedicineList?.quantity}</span>{" "}
             units

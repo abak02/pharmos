@@ -104,7 +104,7 @@ export default function CreateInvoice() {
             {/* Header */}
             <div className="flex items-center justify-between pt-4">
                 <div>
-                    <h1 className={` ${lusitana.className} text-2xl font-bold text-gray-900`}>Create New Invoice</h1>
+                    <h1 className={` ${lusitana.className} text-2xl font-bold text-blue-600`}>Create New Invoice</h1>
                     <p className="text-gray-600 mt-1">Add customer details and medicines</p>
                 </div>
             </div>

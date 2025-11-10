@@ -133,22 +133,22 @@ export default async function MedicineTable({ query, currentPage }) {
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase">
                   Medicine Details
                 </th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase">
                   Manufacturer
                 </th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase  ">
                   Quantity
                 </th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase">
                   Status
                 </th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase">
                   Price
                 </th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase">
                   Actions
                 </th>
               </tr>

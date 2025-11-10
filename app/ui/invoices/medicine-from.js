@@ -588,14 +588,14 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                   name="givenAmount"
                   min="0"
                   step="1"
-                  placeholder="0"
+                  placeholder="TK"
                   value={givenAmount}
                   onChange={(e) => handleGivenAmountChange(e.target.value)}
                   className="w-24 rounded-md border border-gray-300 py-1.5 px-2 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
-                <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
+                {/* <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
                   TK
-                </span>
+                </span> */}
               </div>
             </div>
 

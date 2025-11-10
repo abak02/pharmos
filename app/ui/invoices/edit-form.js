@@ -508,17 +508,18 @@ export default function EditInvoiceForm({ invoiceSummary }) {
                           type="number"
                           id="givenAmount"
                           name="givenAmount"
-                          placeholder="0"
-                          value={givenAmount}
+                          placeholder="TK"
                           onChange={(e) => setGivenAmount(e.target.value)}
-                          className="w-24 rounded-md border border-gray-300 py-1.5 px-3 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          className="w-24 rounded-md border border-gray-300 py-1.5 px-0 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                           min={0}
                           step="1"
                         />
-                        <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
+                         {/* <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
                           TK
-                        </span>
+                        </span> */}
+                        
                       </div>
+                     
                     </div>
 
                     <div className="flex justify-between items-center">
@@ -574,11 +575,12 @@ export default function EditInvoiceForm({ invoiceSummary }) {
           {(isPendingInvoice || isPartialInvoice) && (
             <div className="rounded-md bg-gray-50 p-4 md:p-6">
               <fieldset>
-                <legend className="mb-2 block text-sm font-medium">
+                <legend className="mb-3 block text-sm font-medium">
                   Payment Status
                 </legend>
-                <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
-                  <div className="flex gap-4">
+                <div className="rounded-md border border-gray-200 bg-white px-3 py-3 sm:px-[14px]">
+                  {/* Stack radio buttons vertically on mobile, horizontally on larger screens */}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
                     <div className="flex items-center">
                       <input
                         id="pending"
@@ -634,15 +636,15 @@ export default function EditInvoiceForm({ invoiceSummary }) {
 
                   {/* Auto-status indicator */}
                   <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
                       <span className="font-medium">Auto-detection:</span>
-                      <span className="text-yellow-700">
+                      <span className="text-yellow-700 break-words">
                         {getAutoStatusMessage()}
                       </span>
                     </div>
                   </div>
 
-                  <p className="mt-2 text-xs text-gray-600">
+                  <p className="mt-2 text-xs text-gray-600 leading-relaxed">
                     💡 The system will automatically determine the final status
                     based on the payment amount. You can manually override by
                     selecting a specific status.
