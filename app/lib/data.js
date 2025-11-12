@@ -110,15 +110,20 @@ export async function fetchFilteredMedicine(query, currentPage) {
       LEFT JOIN manufacturerlist m ON ml.manufacturer_id = m.manufacturer_id
       LEFT JOIN shopinventory si ON ml.id = si.medicine_id
       WHERE
-        ml.brandname ILIKE ${`${query}%`} OR
-        ml.genericname ILIKE ${`%${query}%`} 
-      ORDER BY ml.brandname ASC
+        ml.brandname ILIKE ${`%${query}%`} OR
+        ml.genericname ILIKE ${`%${query}%`}
+      ORDER BY 
+        -- Prioritize brand names that start with the query
+        CASE WHEN ml.brandname ILIKE ${`${query}%`} THEN 1
+             WHEN ml.genericname ILIKE ${`${query}%`} THEN 2
+             ELSE 3 END,
+        ml.brandname ASC
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
     `;
 
     return medicines.rows.map((med) => ({
       ...med,
-      price: med.price / 100, // convert from cents to taka
+      price: med.price / 100,
     }));
   } catch (error) {
     console.error("Database Error:", error);
