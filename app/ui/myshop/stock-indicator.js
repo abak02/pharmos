@@ -13,6 +13,7 @@ function getStockStatus(quantity) {
       borderColor: "border-red-200",
       icon: XCircleIcon,
       iconColor: "text-red-500",
+      animation: "animate-pulse"
     };
   } else if (quantity <= 10) {
     return {
@@ -44,6 +45,7 @@ export default function StockIndicator({ quantity }) {
     borderColor,
     icon: Icon,
     iconColor,
+    animation
   } = getStockStatus(quantity);
 
   const getStockText = (qty) => {
@@ -56,7 +58,7 @@ export default function StockIndicator({ quantity }) {
     <div
       className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border ${borderColor} ${bgColor} transition-all duration-200`}
     >
-      <Icon className={`h-4 w-4 ${iconColor}`} />
+      <Icon className={`h-4 w-4 ${animation} ${iconColor}`} />
       <span className={`text-sm font-semibold ${color}`}>
         {getStockText(quantity)}
       </span>
