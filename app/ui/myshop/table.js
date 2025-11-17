@@ -76,7 +76,9 @@ export default async function MedicineTable({ query, currentPage }) {
                     </p>
                     <p className="text-md font-medium text-gray-900">
                       {med.genericname || "-"}
+                      
                     </p>
+                    <p className="font-medium text-gray-600 text-sm">{med.strength}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 font-medium">
@@ -169,7 +171,7 @@ export default async function MedicineTable({ query, currentPage }) {
                           <BeakerIcon className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <div className="flex items-center gap-2  flex-wrap">
                             <h4 className="font-bold text-gray-900 text-sm truncate">
                               {med.brandname}
                             </h4>
@@ -179,6 +181,7 @@ export default async function MedicineTable({ query, currentPage }) {
                               </span>
                             )}
                           </div>
+                          <span className="font-medium text-gray-600 text-sm">{med.strength}</span>
                           <p className="text-sm text-gray-600 max-w-[250px] text-wrap">
                             {med.genericname}
                           </p>

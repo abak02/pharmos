@@ -17,7 +17,7 @@ export default function SideNav() {
             <CubeIcon className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h2 className={`${lusitana.className} text-xl font-bold text-gray-800`}>MedicineApp</h2>
+            <h2 className={`${lusitana.className} text-2xl font-bold text-gray-800`}>Pharmo<span className="text-blue-600">S</span></h2>
             <p className="text-xs text-gray-500 mt-1">Pharmacy System</p>
           </div>
         </div>

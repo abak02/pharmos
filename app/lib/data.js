@@ -104,6 +104,7 @@ export async function fetchFilteredMedicine(query, currentPage) {
         ml.genericname,
         m.nameofthemanufacturer,
         ml.dosagedescription,
+        ml.strength,
         ml.price,
         COALESCE(si.quantity, 0) as quantity
       FROM medicinelist ml
@@ -249,6 +250,7 @@ export async function fetchShopMedicines(query, currentPage) {
         ml.genericname,
         m.nameofthemanufacturer,
         ml.dosagedescription,
+        ml.strength,
         ml.price,
         si.quantity
       FROM shopinventory si

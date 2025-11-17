@@ -1,5 +1,6 @@
 import { formatCurrency, formatQuantity } from "@/app/lib/utils";
 import { fetchFilteredMedicine } from "@/app/lib/data";
+import { BuildingStorefrontIcon } from "@heroicons/react/24/outline";
 
 // Helper function to determine stock status
 function getStockStatus(quantity) {
@@ -100,15 +101,20 @@ export default async function MedicineTable({ query, currentPage }) {
               </div>
 
               {medicine.genericname && (
-                <p className="text-gray-700 text-sm mb-3">
+                <p className="text-gray-700 text-sm mb-1">
                   {medicine.genericname}
+                </p>
+              )}
+              {medicine.strength && (
+                <p className="text-gray-700 font-semibold text-sm mb-3">
+                  {medicine.strength}
                 </p>
               )}
 
               {medicine.nameofthemanufacturer && (
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xs text-gray-500">By</span>
-                  <span className="text-sm text-green-600">
+                  <span className="text-sm text-green-600 font-semibold">
                     {medicine.nameofthemanufacturer}
                   </span>
                 </div>
@@ -176,16 +182,24 @@ export default async function MedicineTable({ query, currentPage }) {
 
                     {/* Generic Name */}
                     <td className="px-6 py-4">
-                      <div className="text-gray-600 text-sm max-w-[200px] line-clamp-2">
+                      <div>
+                        <span className="bg-white text-gray-800 max-w-[200px] line-clamp-2 px-3 py-1.5 rounded-full border border-gray-300 text-sm font-semibold shadow-sm hover:shadow-md transition-shadow duration-200">
+                          {medicine.strength}
+                        </span>
+                      </div>
+                      <div className="text-gray-600 text-sm max-w-[200px] line-clamp-2 mt-2">
                         {medicine.genericname}
                       </div>
                     </td>
 
                     {/* Manufacturer */}
                     <td className="px-6 py-4">
-                      <span className="text-gray-700 text-sm font-medium">
-                        {medicine.nameofthemanufacturer}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <BuildingStorefrontIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        <span className="text-green-600 text-sm font-medium truncate max-w-[180px]">
+                          {medicine.nameofthemanufacturer}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Stock Status */}
