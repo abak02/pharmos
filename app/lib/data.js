@@ -171,7 +171,8 @@ export async function fetchFilteredMedicineForSuggestion(query) {
         ml.id,
         ml.brandname,
         ml.dosagedescription,
-        ml.price
+        ml.price,
+        ml.strength
       FROM medicinelist ml
       WHERE
         ml.brandname ILIKE ${`${query}%`}
@@ -198,6 +199,7 @@ export async function fetchFilteredMedicineWithStockForSuggestion(query) {
         ml.brandname,
         ml.dosagedescription,
         ml.price,
+        ml.strength,
         COALESCE(si.quantity, 0) as stock_quantity
       FROM medicinelist ml
       LEFT JOIN shopinventory si ON ml.id = si.medicine_id
@@ -326,6 +328,7 @@ export async function fetchLowStockMedicinesByManufacturer(manufacturerName) {
         ml.genericname,
         ml.dosagedescription,
         m.nameofthemanufacturer,
+        ml.strength,
         ml.price,
         si.quantity
       FROM shopinventory si

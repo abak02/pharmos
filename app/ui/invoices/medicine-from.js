@@ -306,7 +306,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                         {medicine.brandname}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {medicine.dosagedescription}
+                        {medicine.dosagedescription} {medicine.strength}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">

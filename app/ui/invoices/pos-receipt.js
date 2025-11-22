@@ -101,7 +101,7 @@ export default function POSReceipt({ invoice, customer, medicineList, showPrevie
         </div>
 
         <div className="flex justify-between">
-          <span>Paid:</span>
+          <span>Given:</span>
           <span>{formatCurrency(invoiceSummary.total_given)}</span>
         </div>
 
