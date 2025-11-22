@@ -193,7 +193,7 @@ export default async function MedicineTable({ query, currentPage }) {
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
                         <BuildingStorefrontIcon className="h-4 w-4 text-green-500" />
-                        <span className="font-semibold text-green-600 text-sm">
+                        <span className="font-semibold truncate text-green-600 text-sm max-w-[180px]">
                           {med.nameofthemanufacturer || "-"}
                         </span>
                       </div>

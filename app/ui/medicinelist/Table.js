@@ -1,7 +1,13 @@
 import { formatCurrency, formatQuantity } from "@/app/lib/utils";
 import { fetchFilteredMedicine } from "@/app/lib/data";
 import { BuildingStorefrontIcon } from "@heroicons/react/24/outline";
-
+import {
+  PuzzlePieceIcon,
+  BeakerIcon,
+  BuildingLibraryIcon,
+  ArchiveBoxIcon,
+  CurrencyDollarIcon,
+} from "@heroicons/react/24/outline";
 // Helper function to determine stock status
 function getStockStatus(quantity) {
   if (quantity === 0) {
@@ -140,21 +146,36 @@ export default async function MedicineTable({ query, currentPage }) {
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200">
+              <tr className="border-b border-gray-200 bg-gray-50/50">
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                  Medicine
+                  <div className="flex items-center gap-2">
+                    <PuzzlePieceIcon className="h-4 w-4 text-blue-600" />
+                    Medicine Name
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                  Generic Name
+                  <div className="flex items-center gap-2">
+                    <BeakerIcon className="h-4 w-4 text-purple-600" />
+                    Generic Name
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                  Manufacturer
+                  <div className="flex items-center gap-2">
+                    <BuildingLibraryIcon className="h-4 w-4 text-amber-600" />
+                    Manufacturer
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                  Stock
+                  <div className="flex items-center gap-2">
+                    <ArchiveBoxIcon className="h-4 w-4 text-emerald-600" />
+                    Stock
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                  Price
+                  <div className="flex items-center gap-2">
+                    <CurrencyDollarIcon className="h-4 w-4 text-green-600" />
+                    Price
+                  </div>
                 </th>
               </tr>
             </thead>

@@ -71,7 +71,7 @@ export default function ShopInventoryForm({
               </label>
               <div className="p-3 bg-green-50 rounded-lg border border-green-100">
                 <p className="font-medium text-gray-900">
-                  {medicineDetails?.genericname || "Not available"}
+                  {medicineDetails?.genericname || "Not available"} {medicineDetails?.strength || ""}
                 </p>
               </div>
             </div>

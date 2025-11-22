@@ -138,14 +138,14 @@ export default function CreateInventoryForm({ onAddMedicine = () => {} }) {
                     <div className="flex justify-between items-center">
                       <div>
                         <div className="font-medium text-gray-900">
-                          {medicine.brandname}
+                          {medicine.brandname} <span className="text-xs ml-1 text-gray-500">{medicine.dosagedescription}</span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {medicine.dosagedescription}
+                          {medicine.genericname} {medicine.strength}
                         </div>
                       </div>
                       <div className="text-sm font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
-                        ৳{medicine.price}
+                        {medicine.price} Tk
                       </div>
                     </div>
                   </div>

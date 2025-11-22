@@ -48,6 +48,7 @@ export async function fetchMedicineById(id) {
           ml.genericname,
           m.nameofthemanufacturer,
           ml.dosagedescription,
+          ml.strength,
           ml.price,
           COALESCE(si.quantity, 0) as quantity
         FROM medicinelist ml
@@ -171,6 +172,7 @@ export async function fetchFilteredMedicineForSuggestion(query) {
         ml.id,
         ml.brandname,
         ml.dosagedescription,
+        ml.genericname,
         ml.price,
         ml.strength
       FROM medicinelist ml
