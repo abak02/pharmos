@@ -5,11 +5,8 @@ import { fetchInvoiceById, fetchCustomerById, fetchMedicineByInvoiceID, fetchInv
 import Breadcrumbs from '@/app/ui/invoices/breadcrumbs';
 export default async function Page({params}) {
     const id = params.id;
-    const invoice = await fetchInvoiceById(id);
-    const customer = await fetchCustomerById(invoice?.customer_id);
-    const medicineList = await fetchMedicineByInvoiceID(id);
     const invoiceSummary = await fetchInvoiceSummary(id);
-    if(!invoice){
+    if(!invoiceSummary){
         notFound();
     }
   return (
@@ -24,7 +21,7 @@ export default async function Page({params}) {
           },
         ]}
       />
-      <Form invoice={invoice}  customer={customer} medicineList={medicineList} invoiceSummary={invoiceSummary} />
+      <Form  invoiceSummary={invoiceSummary} />
     </main>
   );
 }

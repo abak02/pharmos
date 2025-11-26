@@ -398,7 +398,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
 
       <AddButton onClick={handleAddMedicine}></AddButton>
 
-      {/* Added Medicines Section */}
+      {/* Added Medicines Section - MOVED OUTSIDE OF FORM */}
       <div className="mt-4">
         <h2 className={`${lusitana.className} text-xl mb-2 text-blue-500`}>
           Added Medicines
@@ -429,6 +429,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                     </div>
                     <div className="flex items-center gap-2 ml-2">
                       <button
+                        type="button" // IMPORTANT: Add type="button"
                         onClick={() => handleEditMedicine(index)}
                         className="p-1 text-blue-500 hover:text-blue-700 transition-colors"
                         title="Edit medicine"
@@ -436,6 +437,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                         <PencilIcon className="h-4 w-4" />
                       </button>
                       <button
+                        type="button" // IMPORTANT: Add type="button"
                         onClick={() => handleDeleteMedicine(index)}
                         className="p-1 text-red-500 hover:text-red-700 transition-colors"
                         title="Delete medicine"
@@ -486,6 +488,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <button
+                      type="button" // IMPORTANT: Add type="button"
                       onClick={() => handleEditMedicine(index)}
                       className="p-1 text-blue-500 hover:text-blue-700 transition-colors"
                       title="Edit medicine"
@@ -493,6 +496,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                       <PencilIcon className="h-4 w-4" />
                     </button>
                     <button
+                      type="button" // IMPORTANT: Add type="button"
                       onClick={() => handleDeleteMedicine(index)}
                       className="p-1 text-red-500 hover:text-red-700 transition-colors"
                       title="Delete medicine"
@@ -505,227 +509,222 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
             ))}
           </div>
         )}
+      </div>
 
-        <hr className="my-4" />
+      {/* Payment Section - MOVED OUTSIDE OF FORM */}
+      <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="space-y-2 sm:space-y-3 max-w-md ml-auto">
+          {/* Subtotal */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs sm:text-sm text-gray-600">Subtotal:</span>
+            <span className="font-semibold text-gray-900 text-sm sm:text-base">
+              {formatCurrency(totalPrice)}
+            </span>
+          </div>
 
-        {/* Simplified Payment Section */}
-        <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="space-y-2 sm:space-y-3 max-w-md ml-auto">
-            {/* Subtotal */}
+          {/* Discount Input */}
+          <div className="flex justify-between items-center py-1">
+            <label htmlFor="discount" className="text-xs sm:text-sm text-gray-600">
+              Discount (%):
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                id="discount"
+                name="discount"
+                placeholder="0"
+                step="0.01"
+                value={discount}
+                onChange={(e) => {
+                  let val = e.target.value;
+                  if (val === "") {
+                    setDiscount("");
+                    return;
+                  }
+                  const num = parseFloat(val);
+                  if (!isNaN(num)) {
+                    const clamped = Math.min(Math.max(num, 0), 10);
+                    setDiscount(clamped.toString());
+                  }
+                }}
+                className="w-20 rounded-md border border-gray-300 py-1.5 px-2 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                min="0"
+                max="10"
+              />
+              <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
+                %
+              </span>
+            </div>
+          </div>
+
+          {/* Discounted Price Display */}
+          {discount && parseFloat(discount) > 0 && (
             <div className="flex justify-between items-center">
-              <span className="text-xs sm:text-sm text-gray-600">Subtotal:</span>
-              <span className="font-semibold text-gray-900 text-sm sm:text-base">
-                {formatCurrency(totalPrice)}
+              <span className="text-xs sm:text-sm text-gray-600">
+                Discount Amount:
+              </span>
+              <span className="font-semibold text-red-600 text-sm sm:text-base">
+                -{formatCurrency(discountAmount)}
               </span>
             </div>
+          )}
 
-            {/* Discount Input */}
-            <div className="flex justify-between items-center py-1">
-              <label htmlFor="discount" className="text-xs sm:text-sm text-gray-600">
-                Discount (%):
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  id="discount"
-                  name="discount"
-                  placeholder="0"
-                  step="0.01"
-                  value={discount}
-                  onChange={(e) => {
-                    let val = e.target.value;
-                    if (val === "") {
-                      setDiscount("");
-                      return;
-                    }
-                    const num = parseFloat(val);
-                    if (!isNaN(num)) {
-                      const clamped = Math.min(Math.max(num, 0), 10);
-                      setDiscount(clamped.toString());
-                    }
-                  }}
-                  className="w-20 rounded-md border border-gray-300 py-1.5 px-2 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  min="0"
-                  max="10"
-                />
-                <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
-                  %
-                </span>
-              </div>
+          {/* Final Amount */}
+          <div className="flex justify-between items-center pt-2 sm:pt-3 border-t border-gray-300">
+            <span className="text-gray-900 font-semibold text-sm sm:text-base">
+              Final Amount:
+            </span>
+            <span className="font-bold text-green-600 text-base sm:text-lg">
+              {formatCurrency(discountedPrice)}
+            </span>
+          </div>
+
+          {/* Given Amount Input */}
+          <div className="flex justify-between items-center py-1">
+            <label htmlFor="givenAmount" className="text-xs sm:text-sm text-gray-600">
+              Given Amount:
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                id="givenAmount"
+                name="givenAmount"
+                min="0"
+                step="1"
+                placeholder="TK"
+                value={givenAmount}
+                onChange={(e) => handleGivenAmountChange(e.target.value)}
+                className="w-24 rounded-md border border-gray-300 py-1.5 px-2 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
             </div>
+          </div>
 
-            {/* Discounted Price Display */}
-            {discount && parseFloat(discount) > 0 && (
-              <div className="flex justify-between items-center">
-                <span className="text-xs sm:text-sm text-gray-600">
-                  Discount Amount:
-                </span>
-                <span className="font-semibold text-red-600 text-sm sm:text-base">
-                  -{formatCurrency(discountAmount)}
-                </span>
-              </div>
-            )}
+          {/* Dynamic Status Display */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs sm:text-sm text-gray-600">Status:</span>
+            <span className={`font-semibold text-sm sm:text-base ${
+              autoSelectedStatus === "paid" 
+                ? "text-green-600" 
+                : autoSelectedStatus === "partial" 
+                ? "text-blue-600" 
+                : "text-orange-600"
+            }`}>
+              {autoSelectedStatus === "paid" && "Paid ✅"}
+              {autoSelectedStatus === "partial" && "Partial Payment"}
+              {autoSelectedStatus === "pending" && "Pending"}
+            </span>
+          </div>
 
-            {/* Final Amount */}
-            <div className="flex justify-between items-center pt-2 sm:pt-3 border-t border-gray-300">
-              <span className="text-gray-900 font-semibold text-sm sm:text-base">
-                Final Amount:
-              </span>
-              <span className="font-bold text-green-600 text-base sm:text-lg">
-                {formatCurrency(discountedPrice)}
-              </span>
-            </div>
-
-            {/* Given Amount Input */}
-            <div className="flex justify-between items-center py-1">
-              <label htmlFor="givenAmount" className="text-xs sm:text-sm text-gray-600">
-                Given Amount:
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  id="givenAmount"
-                  name="givenAmount"
-                  min="0"
-                  step="1"
-                  placeholder="TK"
-                  value={givenAmount}
-                  onChange={(e) => handleGivenAmountChange(e.target.value)}
-                  className="w-24 rounded-md border border-gray-300 py-1.5 px-2 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-                {/* <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
-                  TK
-                </span> */}
-              </div>
-            </div>
-
-            {/* Dynamic Status Display */}
+          {/* Change Amount for Paid invoices */}
+          {autoSelectedStatus === "paid" && (
             <div className="flex justify-between items-center">
-              <span className="text-xs sm:text-sm text-gray-600">Status:</span>
-              <span className={`font-semibold text-sm sm:text-base ${
-                autoSelectedStatus === "paid" 
-                  ? "text-green-600" 
-                  : autoSelectedStatus === "partial" 
-                  ? "text-blue-600" 
-                  : "text-orange-600"
-              }`}>
-                {autoSelectedStatus === "paid" && "Paid ✅"}
-                {autoSelectedStatus === "partial" && "Partial Payment"}
-                {autoSelectedStatus === "pending" && "Pending"}
+              <span className="text-xs sm:text-sm text-gray-600">Change Amount:</span>
+              <span className="font-semibold text-blue-600 text-sm sm:text-base">
+                {formatCurrency(changeAmount >= 0 ? changeAmount : 0)}
               </span>
             </div>
+          )}
 
-            {/* Change Amount for Paid invoices */}
-            {autoSelectedStatus === "paid" && (
-              <div className="flex justify-between items-center">
-                <span className="text-xs sm:text-sm text-gray-600">Change Amount:</span>
-                <span className="font-semibold text-blue-600 text-sm sm:text-base">
-                  {formatCurrency(changeAmount >= 0 ? changeAmount : 0)}
-                </span>
-              </div>
-            )}
+          {/* Remaining Amount for Partial invoices */}
+          {autoSelectedStatus === "partial" && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm text-gray-600">Remaining Amount:</span>
+              <span className="font-semibold text-orange-600 text-sm sm:text-base">
+                {formatCurrency(remainingAmount)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
 
-            {/* Remaining Amount for Partial invoices */}
-            {autoSelectedStatus === "partial" && (
-              <div className="flex justify-between items-center">
-                <span className="text-xs sm:text-sm text-gray-600">Remaining Amount:</span>
-                <span className="font-semibold text-orange-600 text-sm sm:text-base">
-                  {formatCurrency(remainingAmount)}
-                </span>
-              </div>
+      {/* Invoice Status Section - MOVED OUTSIDE OF FORM */}
+      <fieldset className="mt-6">
+        <legend className="mb-2 block text-sm font-medium">Invoice Status *</legend>
+        <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Pending Status */}
+            <div className="flex items-center">
+              <input
+                id="pending"
+                name="status"
+                type="radio"
+                value="pending"
+                checked={autoSelectedStatus === "pending"}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
+                required
+              />
+              <label
+                htmlFor="pending"
+                className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-orange-100 border border-orange-200 px-3 py-1.5 text-xs font-medium text-orange-600"
+              >
+                Pending <ClockIcon className="h-4 w-4" />
+              </label>
+            </div>
+
+            {/* Partial Status */}
+            <div className="flex items-center">
+              <input
+                id="partial"
+                name="status"
+                type="radio"
+                value="partial"
+                checked={autoSelectedStatus === "partial"}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
+                required
+              />
+              <label
+                htmlFor="partial"
+                className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-100 border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600"
+              >
+                Partial <CurrencyBangladeshiIcon className="h-4 w-4" />
+              </label>
+            </div>
+
+            {/* Paid Status */}
+            <div className="flex items-center">
+              <input
+                id="paid"
+                name="status"
+                type="radio"
+                value="paid"
+                checked={autoSelectedStatus === "paid"}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
+                required
+              />
+              <label
+                htmlFor="paid"
+                className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-green-500 px-3 py-1.5 text-xs font-medium text-white"
+              >
+                Paid <CheckIcon className="h-4 w-4" />
+              </label>
+            </div>
+          </div>
+
+          {/* Status Help Text */}
+          <div className="mt-2 text-xs">
+            {autoSelectedStatus === "partial" ? (
+              <p className="text-blue-600">
+                💡 Customer paid {formatCurrency(givenAmount)} of {formatCurrency(discountedPrice)}. Remaining: {formatCurrency(remainingAmount)}
+              </p>
+            ) : autoSelectedStatus === "paid" ? (
+              <p className="text-green-600">
+                💡 Full payment received. Change: {formatCurrency(changeAmount)}
+              </p>
+            ) : (
+              <p className="text-orange-600">
+                💡 No payment received - Invoice will be pending
+              </p>
             )}
           </div>
         </div>
 
-        {/* Invoice Status Section */}
-        <fieldset className="mt-6">
-          <legend className="mb-2 block text-sm font-medium">Invoice Status *</legend>
-          <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* Pending Status */}
-              <div className="flex items-center">
-                <input
-                  id="pending"
-                  name="status"
-                  type="radio"
-                  value="pending"
-                  checked={autoSelectedStatus === "pending"}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                  required
-                />
-                <label
-                  htmlFor="pending"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-orange-100 border border-orange-200 px-3 py-1.5 text-xs font-medium text-orange-600"
-                >
-                  Pending <ClockIcon className="h-4 w-4" />
-                </label>
-              </div>
-
-              {/* Partial Status */}
-              <div className="flex items-center">
-                <input
-                  id="partial"
-                  name="status"
-                  type="radio"
-                  value="partial"
-                  checked={autoSelectedStatus === "partial"}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                  required
-                />
-                <label
-                  htmlFor="partial"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-100 border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600"
-                >
-                  Partial <CurrencyBangladeshiIcon className="h-4 w-4" />
-                </label>
-              </div>
-
-              {/* Paid Status */}
-              <div className="flex items-center">
-                <input
-                  id="paid"
-                  name="status"
-                  type="radio"
-                  value="paid"
-                  checked={autoSelectedStatus === "paid"}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                  required
-                />
-                <label
-                  htmlFor="paid"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-green-500 px-3 py-1.5 text-xs font-medium text-white"
-                >
-                  Paid <CheckIcon className="h-4 w-4" />
-                </label>
-              </div>
-            </div>
-
-            {/* Status Help Text */}
-            <div className="mt-2 text-xs">
-              {autoSelectedStatus === "partial" ? (
-                <p className="text-blue-600">
-                  💡 Customer paid {formatCurrency(givenAmount)} of {formatCurrency(discountedPrice)}. Remaining: {formatCurrency(remainingAmount)}
-                </p>
-              ) : autoSelectedStatus === "paid" ? (
-                <p className="text-green-600">
-                  💡 Full payment received. Change: {formatCurrency(changeAmount)}
-                </p>
-              ) : (
-                <p className="text-orange-600">
-                  💡 No payment received - Invoice will be pending
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Hidden inputs for form submission */}
-          <input type="hidden" name="status" value={autoSelectedStatus} />
-          <input type="hidden" name="givenAmount" value={givenAmount} />
-        </fieldset>
-      </div>
+        {/* Hidden inputs for form submission */}
+        <input type="hidden" name="status" value={autoSelectedStatus} />
+        <input type="hidden" name="givenAmount" value={givenAmount} />
+      </fieldset>
     </>
   );
 }

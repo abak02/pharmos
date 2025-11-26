@@ -347,8 +347,10 @@ export async function updateInvoice(id, formData) {
 }
 
 export async function deleteInvoice(id) {
+  
   try {
-    await sql`DELETE FROM invoices WHERE id = ${id}`;
+    await sql `DELETE FROM invoices WHERE id = ${id}`;
+    await sql `DELETE FROM invoice_medicines WHERE invoice_id = ${id}`;
     revalidatePath("/dashboard/invoices");
     
     return {

@@ -1,5 +1,6 @@
 // app/ui/invoices/table.tsx
 import { UpdateInvoice, DeleteInvoice } from "@/app/ui/invoices/buttons";
+import PrintButton from "@/app/ui/invoices/print-button"; // Add this import
 import InvoiceStatus from "@/app/ui/invoices/status";
 import StatusFilter from "@/app/ui/invoices/status-filter";
 import { formatDateTimeToLocal, formatCurrency, GetRandomAvatar } from "@/app/lib/utils";
@@ -18,7 +19,7 @@ export default async function InvoicesTable({
   currentPage,
   customerId = null,
   customerName = null,
-  status = null // Add status prop with default value
+  status = null
 }) {
   const invoices = await fetchFilteredInvoices(
     query,
@@ -26,6 +27,7 @@ export default async function InvoicesTable({
     customerId,
     status
   );
+  
 
   // Calculate pending amount for each invoice
   const invoicesWithPending = invoices.map((invoice) => ({
@@ -163,6 +165,7 @@ function InvoiceCard({ invoice }) {
         </div>
         <div className="flex justify-end gap-2">
           <UpdateInvoice id={invoice.id} />
+          <PrintButton invoice={invoice} /> {/* Add Print Button */}
           <DeleteInvoice id={invoice.id} />
         </div>
       </div>
@@ -234,6 +237,7 @@ function InvoiceTableDesktop({ invoices }) {
             <td className="px-4 py-4">
               <div className="flex justify-start gap-3">
                 <UpdateInvoice id={invoice.id} />
+                <PrintButton invoice={invoice} /> {/* Add Print Button */}
                 <DeleteInvoice id={invoice.id} />
               </div>
             </td>
@@ -244,7 +248,7 @@ function InvoiceTableDesktop({ invoices }) {
   );
 }
 
-// Footer Statistics Component
+// Footer Statistics Component (unchanged)
 function InvoiceFooterStats({ 
   invoiceCount, 
   customerName, 
@@ -300,7 +304,6 @@ function InvoiceFooterStats({
           <div className="font-bold text-orange-600">{formatCurrency(totalPending)}</div>
           <div className="text-gray-500">Total Pending</div>
         </div>
-        
       </div>
     </div>
   );

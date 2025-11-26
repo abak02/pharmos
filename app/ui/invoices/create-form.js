@@ -135,7 +135,7 @@ export default function CreateInvoice() {
                                         handleCustomerChange(e.target.value);
                                     }}
                                     className="w-full rounded-lg border border-gray-300 px-4 py-3 pl-11 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-                                    required
+                                    
                                 />
                                 <UserCircleIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 {showSuggestions && customersList.length > 0 && (
@@ -170,7 +170,7 @@ export default function CreateInvoice() {
                                     value={customerEmail}
                                     onChange={(e) => setCustomerEmail(e.target.value)}
                                     className="w-full rounded-lg border border-gray-300 px-4 py-3 pl-11 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-                                    required
+                                    
                                 />
                                 <PhoneIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                             </div>
