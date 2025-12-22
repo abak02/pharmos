@@ -92,7 +92,7 @@ export function Card({
       </div>
       
       <div className="flex items-end justify-between">
-        <p className={`${lusitana.className} text-3xl font-bold ${colors.value}`}>
+        <p className={`${lusitana.className} text-xl font-bold ${colors.value}`}>
           {value}
         </p>
         
