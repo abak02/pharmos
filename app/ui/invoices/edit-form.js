@@ -390,7 +390,7 @@ export default function EditInvoiceForm({ invoiceSummary }) {
                         {formatCurrency(
                           medicine.quantity * medicine.price_per_unit
                         )}{" "}
-                        Tk
+                       
                       </span>
                     </div>
                   </div>

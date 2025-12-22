@@ -9,7 +9,7 @@ export default function SideNav() {
     <div className="flex h-full flex-col px-3 py-6 md:px-4 bg-white border-r border-gray-200">
       {/* Logo Section */}
       <Link
-        className="mb-8 flex items-center justify-start p-4 hover:bg-blue-50 rounded-2xl transition-all duration-200 group md:h-40"
+        className="mb-8 flex items-center justify-start p-4  rounded-2xl transition-all duration-200 group md:h-40"
         href="/"
       >
         <div className="flex items-center space-x-3">
