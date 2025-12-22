@@ -82,7 +82,7 @@ function generateReceiptHTML(invoice, invoiceSummary) {
   );
 
   // Calculate discount amount
-  const discountAmount = subtotal - invoiceSummary.amount;
+  const discountAmount = invoiceSummary.discounted_amount;
 
   return `
     <div class="p-2 max-w-[58mm] mx-auto font-sans text-xs bg-white">
@@ -149,7 +149,7 @@ function generateReceiptHTML(invoice, invoiceSummary) {
 
         <div class="flex justify-between">
           <span>Discount:</span>
-          <span>- ${formatCurrency(discountAmount)}</span>
+          <span>- ${formatCurrency(discountAmount)}</span> 
         </div>
 
         <div class="flex justify-between font-bold border-t border-black pt-[1px]">

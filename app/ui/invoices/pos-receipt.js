@@ -87,10 +87,7 @@ export default function POSReceipt({ invoice, customer, medicineList, showPrevie
           <span>
             -{" "}
             {formatCurrency(
-              medicineList.reduce(
-                (sum, m) => sum + m.quantity * m.price_per_unit,
-                0
-              ) - invoice.amount
+              invoiceSummary.discounted_amount
             )}
           </span>
         </div>

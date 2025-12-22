@@ -884,7 +884,7 @@ export async function fetchInvoiceSummary(invoiceId) {
       status: row.status,
       date: row.date,
       time: row.time,
-      discounted_amount: (row.discounted_amount || 0) / 100,
+      discounted_amount: Math.max((row.discounted_amount || 0) / 100, 0),
       paid_amount: (row.paid_amount || 0) / 100,
       customer_name: row.customer_name,
       customer_phone: row.customer_phone,
