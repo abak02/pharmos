@@ -19,24 +19,42 @@ const FormSchema = z.object({
 
 const CreateCustomer = FormSchema.omit({ id: true });
 
+// Helper function to capitalize each word
+function capitalizeWords(str) {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export async function createCustomer(formData) {
-  const { customerName, customerEmail } = CreateCustomer.parse({
-    customerName: formData.get("customerName"),
-    customerEmail: formData.get("customerEmail"),
+  const rawCustomerName = formData.get("customerName");
+  const customerEmail = formData.get("customerEmail");
+  
+  // Capitalize the customer name
+  const customerName = capitalizeWords(rawCustomerName);
+
+  // Validate after capitalization
+  const validatedFields = CreateCustomer.parse({
+    customerName,
+    customerEmail,
   });
 
   const customerId = uuidv4();
 
   try {
     await sql`
-    INSERT INTO customers (id, name, phone_no)
-    VALUES (${customerId}, ${customerName}, ${customerEmail})
-  `;
+      INSERT INTO customers (id, name, phone_no)
+      VALUES (${customerId}, ${customerName}, ${customerEmail})
+    `;
   } catch (error) {
+    console.error("Database Error:", error);
     return {
-      message: "Database Error: Failed to Create Invoice.",
+      message: "Database Error: Failed to Create Customer.",
     };
   }
+  
   revalidatePath("/dashboard/customers");
   redirect("/dashboard/customers");
 }
@@ -85,7 +103,7 @@ export async function createInvoice(formData, selectedMedicines) {
             customerId = uuidv4();
             await sql`
                 INSERT INTO customers (id, name, phone_no)
-                VALUES (${customerId}, ${customerName}, ${customerEmail})
+                VALUES (${customerId}, ${capitalizeWords(customerName)}, ${customerEmail})
             `;
         }
 

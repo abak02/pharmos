@@ -21,6 +21,7 @@ export default function CreateInvoice() {
     const router = useRouter();
     const [customersList, setCustomers] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [suggestionsFor, setSuggestionsFor] = useState(''); // 'name' or 'phone'
     const [inputValue, setInputValue] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
     const [selectedMedicines, setSelectedMedicines] = useState([]);
@@ -33,20 +34,51 @@ export default function CreateInvoice() {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleCustomerChange = useDebouncedCallback(async (term) => {
-        if (term) {
+    // Fetch customers based on search term
+    const handleSearch = useDebouncedCallback(async (term, field) => {
+        if (term.trim().length > 0) {
             const customers = await fetchCustomer(term);
             setCustomers(customers);
             setShowSuggestions(true);
+            setSuggestionsFor(field);
         } else {
             setShowSuggestions(false);
         }
     }, 300);
 
+    // Handle name field change
+    const handleNameChange = (value) => {
+        setInputValue(value);
+        handleSearch(value, 'name');
+    };
+
+    // Handle phone field change
+    const handlePhoneChange = (value) => {
+        setCustomerEmail(value);
+        handleSearch(value, 'phone');
+    };
+
+    // Handle suggestion click from both fields
     const handleSuggestionClick = (customer) => {
         setInputValue(customer.name);
         setCustomerEmail(customer.phone_no);
         setShowSuggestions(false);
+        setCustomers([]); // Clear suggestions after selection
+    };
+
+    // Handle clicking outside to close suggestions
+    useEffect(() => {
+        const handleClickOutside = () => {
+            setShowSuggestions(false);
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
+    // Prevent closing when clicking inside suggestion box
+    const handleSuggestionsClick = (e) => {
+        e.stopPropagation();
     };
 
     const handleAddMedicine = (medicines) => {
@@ -117,7 +149,7 @@ export default function CreateInvoice() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Customer Name */}
+                        {/* Customer Name Field */}
                         <div className="space-y-2">
                             <label htmlFor="customerName" className="block text-sm font-medium text-gray-700">
                                 Customer Name
@@ -128,26 +160,39 @@ export default function CreateInvoice() {
                                     id="customerName"
                                     name="customerName"
                                     autoComplete='off'
-                                    placeholder="Enter customer name"
+                                    placeholder="Enter customer name or phone"
                                     value={inputValue}
-                                    onChange={(e) => {
-                                        setInputValue(e.target.value);
-                                        handleCustomerChange(e.target.value);
+                                    onChange={(e) => handleNameChange(e.target.value)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (inputValue.trim()) {
+                                            handleSearch(inputValue, 'name');
+                                        }
                                     }}
                                     className="w-full rounded-lg border border-gray-300 px-4 py-3 pl-11 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-                                    
                                 />
                                 <UserCircleIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                {showSuggestions && customersList.length > 0 && (
-                                    <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-y-auto">
+                                
+                                {/* Suggestions Dropdown */}
+                                {showSuggestions && suggestionsFor === 'name' && customersList.length > 0 && (
+                                    <ul 
+                                        className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-y-auto"
+                                        onClick={handleSuggestionsClick}
+                                    >
                                         {customersList.map((customer) => (
                                             <li
                                                 key={customer.id}
                                                 onClick={() => handleSuggestionClick(customer)}
-                                                className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                                                className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors flex items-center justify-between"
                                             >
-                                                <div className="font-medium text-gray-900">{customer.name}</div>
-                                                <div className="text-sm text-gray-500">{customer.phone_no}</div>
+                                                <div>
+                                                    <div className="font-medium text-gray-900">{customer.name}</div>
+                                                    <div className="text-sm text-gray-500 flex items-center gap-1">
+                                                        <PhoneIcon className="h-3 w-3" />
+                                                        {customer.phone_no}
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs text-gray-400">Click to select</span>
                                             </li>
                                         ))}
                                     </ul>
@@ -155,7 +200,7 @@ export default function CreateInvoice() {
                             </div>
                         </div>
 
-                        {/* Customer Phone */}
+                        {/* Customer Phone Field */}
                         <div className="space-y-2">
                             <label htmlFor="customerEmail" className="block text-sm font-medium text-gray-700">
                                 Customer Phone No
@@ -166,13 +211,45 @@ export default function CreateInvoice() {
                                     id="customerEmail"
                                     name="customerEmail"
                                     autoComplete='off'
-                                    placeholder="Enter customer phone number"
+                                    placeholder="Enter phone number or name"
                                     value={customerEmail}
-                                    onChange={(e) => setCustomerEmail(e.target.value)}
+                                    onChange={(e) => handlePhoneChange(e.target.value)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (customerEmail.trim()) {
+                                            handleSearch(customerEmail, 'phone');
+                                        }
+                                    }}
                                     className="w-full rounded-lg border border-gray-300 px-4 py-3 pl-11 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-                                    
                                 />
                                 <PhoneIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                
+                                {/* Suggestions Dropdown */}
+                                {showSuggestions && suggestionsFor === 'phone' && customersList.length > 0 && (
+                                    <ul 
+                                        className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-y-auto"
+                                        onClick={handleSuggestionsClick}
+                                    >
+                                        {customersList.map((customer) => (
+                                            <li
+                                                key={customer.id}
+                                                onClick={() => handleSuggestionClick(customer)}
+                                                className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors flex items-center justify-between"
+                                            >
+                                                <div>
+                                                    <div className="font-medium text-gray-900 flex items-center gap-1">
+                                                        <UserCircleIcon className="h-3 w-3" />
+                                                        {customer.name}
+                                                    </div>
+                                                    <div className="text-sm text-gray-500">
+                                                        {customer.phone_no}
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs text-gray-400">Click to select</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                         </div>
                     </div>

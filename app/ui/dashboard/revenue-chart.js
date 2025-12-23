@@ -91,7 +91,7 @@ export default async function RevenueChart() {
             <p className="text-sm text-gray-600">
               {currentMonthName} Month Revenue
             </p>
-            <p className={`${lusitana.className} text-xl font-bold text-gray-800`}>
+            <p className={`${lusitana.className} text-xl font-bold text-green-400`}>
               {formatCurrency(currentRevenue)}
             </p>
             {previousMonth && (
