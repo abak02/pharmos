@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { lusitana } from "../fonts";
 import { fetchFilteredMedicineWithStockForSuggestion } from "@/app/lib/data";
@@ -25,7 +25,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
   const [addedMedicines, setAddedMedicines] = useState([]);
   const [totalPrice, setTotalPrice] = useState(0);
   const [id, setId] = useState("");
-  const [discount, setDiscount] = useState("");
+  const [discountPercentage, setDiscountPercentage] = useState("");
   const [discountedPrice, setDiscountedPrice] = useState(0);
   const [givenAmount, setGivenAmount] = useState("");
   const [changeAmount, setChangeAmount] = useState(0);
@@ -34,23 +34,116 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
   const [autoSelectedStatus, setAutoSelectedStatus] = useState("pending");
   const [remainingAmount, setRemainingAmount] = useState(0);
 
-  // Memoize the price update function to prevent infinite loops
-  const updateParentPrices = useCallback(() => {
-    if (onPriceUpdate) {
-      onPriceUpdate({
-        totalPrice: parseFloat(totalPrice) || 0,
-        discountedPrice: parseFloat(discountedPrice) || 0,
-        discountPercentage: parseFloat(discount) || 0,
-        givenAmount: parseFloat(givenAmount) || 0,
-        changeAmount: parseFloat(changeAmount) || 0,
-        remainingAmount: parseFloat(remainingAmount) || 0,
-        status: autoSelectedStatus,
-      });
+  // Use refs to track previous values and prevent infinite loops
+  const prevValuesRef = useRef({});
+  const isInitialMount = useRef(true);
+
+  // Main calculation effect - runs only when needed dependencies change
+  useEffect(() => {
+    // Skip initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Calculate total from added medicines
+    const total = addedMedicines.reduce(
+      (acc, medicine) => acc + parseFloat(medicine.totalPrice),
+      0
+    );
+    
+    // Only update if total actually changed
+    if (Math.abs(total - totalPrice) > 0.01) {
+      setTotalPrice(total);
+    }
+
+    // Calculate discount amount (max 10%)
+    const discountPercent = parseFloat(discountPercentage) || 0;
+    const cappedDiscountPercent = Math.min(discountPercent, 10);
+    let discountAmt = (total * cappedDiscountPercent) / 100;
+
+    // Calculate discounted price (rounded UP to ceiling)
+    let discounted = Math.ceil(total - discountAmt);
+
+    // Calculate ACTUAL discount after rounding (not theoretical)
+    let actualDiscountAmt = total - discounted;
+    actualDiscountAmt = Math.max(actualDiscountAmt, 0); // Ensure not negative
+
+    // If rounding eliminated the discount, adjust
+    if (actualDiscountAmt === 0 && discountAmt > 0) {
+      discounted = Math.ceil(total); // Just round the original total
+    }
+
+    // Only update state if values actually changed
+    if (Math.abs(discounted - discountedPrice) > 0.01) {
+      setDiscountedPrice(discounted);
+    }
+    
+    if (Math.abs(actualDiscountAmt - discountAmount) > 0.01) {
+      setDiscountAmount(actualDiscountAmt);
+    }
+
+    // Calculate change and remaining
+    const given = parseFloat(givenAmount) || 0;
+    const change = Math.max(0, given - discounted);
+    const remaining = Math.max(0, discounted - given);
+
+    if (Math.abs(change - changeAmount) > 0.01) {
+      setChangeAmount(change);
+    }
+    
+    if (Math.abs(remaining - remainingAmount) > 0.01) {
+      setRemainingAmount(remaining);
+    }
+
+    // Auto-determine status
+    let newStatus = autoSelectedStatus;
+    if (given === 0) {
+      newStatus = "pending";
+    } else if (given >= discounted) {
+      newStatus = "paid";
+    } else if (given > 0) {
+      newStatus = "partial";
+    }
+
+    if (newStatus !== autoSelectedStatus) {
+      setAutoSelectedStatus(newStatus);
+    }
+  }, [addedMedicines, discountPercentage, givenAmount]);
+
+  // Update parent when prices change - with infinite loop prevention
+  useEffect(() => {
+    if (!onPriceUpdate) return;
+
+    const currentValues = {
+      totalPrice: totalPrice || 0,
+      discountedPrice: discountedPrice || 0,
+      discountPercentage: totalPrice > 0 ? (discountAmount / totalPrice) * 100 : 0,
+      givenAmount: parseFloat(givenAmount) || 0,
+      changeAmount: changeAmount || 0,
+      remainingAmount: remainingAmount || 0,
+      status: autoSelectedStatus,
+    };
+
+    // Check if values actually changed
+    const prevValues = prevValuesRef.current;
+    const hasChanged = 
+      Math.abs(prevValues.totalPrice - currentValues.totalPrice) > 0.01 ||
+      Math.abs(prevValues.discountedPrice - currentValues.discountedPrice) > 0.01 ||
+      Math.abs(prevValues.discountPercentage - currentValues.discountPercentage) > 0.01 ||
+      Math.abs(prevValues.givenAmount - currentValues.givenAmount) > 0.01 ||
+      Math.abs(prevValues.changeAmount - currentValues.changeAmount) > 0.01 ||
+      Math.abs(prevValues.remainingAmount - currentValues.remainingAmount) > 0.01 ||
+      prevValues.status !== currentValues.status;
+
+    if (hasChanged) {
+      prevValuesRef.current = currentValues;
+      onPriceUpdate(currentValues);
     }
   }, [
     totalPrice,
     discountedPrice,
-    discount,
+    discountAmount,
     givenAmount,
     changeAmount,
     remainingAmount,
@@ -58,88 +151,48 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     onPriceUpdate,
   ]);
 
-  // Use a ref to track if this is the initial render
-  const initialRender = React.useRef(true);
-
-  useEffect(() => {
-    if (initialRender.current) {
-      initialRender.current = false;
+  // Handle discount input with validation
+  const handleDiscountChange = useCallback((value) => {
+    if (value === "") {
+      setDiscountPercentage("");
       return;
     }
 
-    // Debounce the price update to parent
-    const timeoutId = setTimeout(updateParentPrices, 100);
-    return () => clearTimeout(timeoutId);
-  }, [updateParentPrices]);
-
-  // Main calculation function
-  const calculateStatusAndAmounts = useCallback(() => {
-    const total = addedMedicines.reduce(
-      (acc, medicine) => acc + parseFloat(medicine.totalPrice),
-      0
-    );
-    setTotalPrice(total.toFixed(2));
-
-    const discountAmount = discount ? (total * parseFloat(discount)) / 100 : 0;
-    const discounted = Math.ceil(total - discountAmount);
-    setDiscountedPrice(discounted.toFixed(2));
-    setDiscountAmount(discountAmount.toFixed(2));
-
-    const finalAmount = parseFloat(discounted.toFixed(2));
-    const given = parseFloat(givenAmount) || 0;
-
-    // Calculate change and remaining amounts
-    const change = Math.max(0, given - finalAmount);
-    const remaining = Math.max(0, finalAmount - given);
-    
-    setChangeAmount(change);
-    setRemainingAmount(remaining);
-
-    // Auto-determine status based on given amount
-    if (given === 0) {
-      setAutoSelectedStatus("pending");
-    } else if (given >= finalAmount) {
-      setAutoSelectedStatus("paid");
-    } else if (given > 0) {
-      setAutoSelectedStatus("partial");
-    } else {
-      setAutoSelectedStatus("pending");
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      // Cap at 10%
+      const clamped = Math.min(Math.max(num, 0), 10);
+      setDiscountPercentage(clamped.toString());
     }
-  }, [addedMedicines, discount, givenAmount]);
-
-  // Calculate prices and status
-  useEffect(() => {
-    calculateStatusAndAmounts();
-  }, [calculateStatusAndAmounts]);
+  }, []);
 
   // Handle given amount change
-  const handleGivenAmountChange = (amount) => {
-    setGivenAmount(amount);
-  };
+  const handleGivenAmountChange = useCallback((amount) => {
+    const cleaned = amount.replace(/[^\d.]/g, "");
+    
+    if (cleaned === "") {
+      setGivenAmount("");
+      return;
+    }
+    
+    const num = parseFloat(cleaned);
+    if (!isNaN(num)) {
+      setGivenAmount(num.toString());
+    }
+  }, []);
 
   // Handle manual status selection
-  const handleStatusChange = (status) => {
-    const finalAmount = parseFloat(discountedPrice) || 0;
-
+  const handleStatusChange = useCallback((status) => {
     setAutoSelectedStatus(status);
-    
+
     if (status === "paid") {
-      // Set given amount to final amount if not already enough
-      if (!givenAmount || parseFloat(givenAmount) < finalAmount) {
-        setGivenAmount(finalAmount.toString());
-      }
-    } else if (status === "partial") {
-      // If no given amount set, set to 0 or keep current
-      if (!givenAmount || parseFloat(givenAmount) <= 0) {
-        setGivenAmount("0");
-      }
+      setGivenAmount(discountedPrice.toString());
     } else if (status === "pending") {
-      // Clear given amount for pending invoices
       setGivenAmount("");
     }
-  };
+  }, [discountedPrice]);
 
-  // Rest of your existing functions remain the same...
+  // Medicine search with debouncing
   const handleSearch = useDebouncedCallback(async (term) => {
     if (term && term.length >= 2) {
       const filteredMedicines =
@@ -151,7 +204,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     }
   }, 300);
 
-  const handleSuggestionClick = (medicine) => {
+  const handleSuggestionClick = useCallback((medicine) => {
     setPrice(medicine.price);
     setMedicineName(medicine.brandname);
     setType(medicine.dosagedescription);
@@ -160,9 +213,9 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     if (errors.medicineName) {
       setErrors((prev) => ({ ...prev, medicineName: "" }));
     }
-  };
+  }, [errors.medicineName]);
 
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors = {};
 
     if (!medicineName.trim()) {
@@ -179,9 +232,9 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [medicineName, quantity, price]);
 
-  const handleAddMedicine = () => {
+  const handleAddMedicine = useCallback(() => {
     if (!validateForm()) {
       return;
     }
@@ -210,17 +263,17 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     if (onAddMedicine) {
       onAddMedicine(updatedMedicines);
     }
-  };
+  }, [validateForm, price, quantity, medicineName, type, id, addedMedicines, onAddMedicine]);
 
-  const handleDeleteMedicine = (index) => {
+  const handleDeleteMedicine = useCallback((index) => {
     const updatedMedicines = addedMedicines.filter((_, i) => i !== index);
     setAddedMedicines(updatedMedicines);
     if (onAddMedicine) {
       onAddMedicine(updatedMedicines);
     }
-  };
+  }, [addedMedicines, onAddMedicine]);
 
-  const handleEditMedicine = (index) => {
+  const handleEditMedicine = useCallback((index) => {
     const medicineToEdit = addedMedicines[index];
     const updatedMedicines = addedMedicines.filter((_, i) => i !== index);
     setAddedMedicines(updatedMedicines);
@@ -234,9 +287,9 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     setType(medicineToEdit.type);
     setId(medicineToEdit.id);
     setErrors({});
-  };
+  }, [addedMedicines, onAddMedicine]);
 
-  const getStockStatusStyle = (stockQuantity) => {
+  const getStockStatusStyle = useCallback((stockQuantity) => {
     if (stockQuantity > 10) {
       return { color: "green", text: `In Stock: ${stockQuantity}` };
     } else if (stockQuantity > 0) {
@@ -244,7 +297,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     } else {
       return { color: "red", text: "Out of Stock" };
     }
-  };
+  }, []);
 
   return (
     <>
@@ -252,7 +305,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
         Medicine List
       </p>
 
-      {/* Medicine input fields remain the same */}
+      {/* Medicine input fields */}
       <div className="gap-4 mb-4 md:flex">
         <div className="relative flex-1">
           <label
@@ -303,10 +356,13 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                   >
                     <div className="flex-1">
                       <div className="font-medium text-gray-900">
-                        {medicine.brandname}<span className="text-xs ml-1 text-gray-500">{medicine.dosagedescription}</span>
+                        {medicine.brandname}
+                        <span className="text-xs ml-1 text-gray-500">
+                          {medicine.dosagedescription}
+                        </span>
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                         {medicine.genericname} {medicine.strength}
+                        {medicine.genericname} {medicine.strength}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
@@ -396,9 +452,9 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
         </div>
       </div>
 
-      <AddButton onClick={handleAddMedicine}></AddButton>
+      <AddButton onClick={handleAddMedicine} />
 
-      {/* Added Medicines Section - MOVED OUTSIDE OF FORM */}
+      {/* Added Medicines Section */}
       <div className="mt-4">
         <h2 className={`${lusitana.className} text-xl mb-2 text-blue-500`}>
           Added Medicines
@@ -429,7 +485,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                     </div>
                     <div className="flex items-center gap-2 ml-2">
                       <button
-                        type="button" // IMPORTANT: Add type="button"
+                        type="button"
                         onClick={() => handleEditMedicine(index)}
                         className="p-1 text-blue-500 hover:text-blue-700 transition-colors"
                         title="Edit medicine"
@@ -437,7 +493,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                         <PencilIcon className="h-4 w-4" />
                       </button>
                       <button
-                        type="button" // IMPORTANT: Add type="button"
+                        type="button"
                         onClick={() => handleDeleteMedicine(index)}
                         className="p-1 text-red-500 hover:text-red-700 transition-colors"
                         title="Delete medicine"
@@ -488,7 +544,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <button
-                      type="button" // IMPORTANT: Add type="button"
+                      type="button"
                       onClick={() => handleEditMedicine(index)}
                       className="p-1 text-blue-500 hover:text-blue-700 transition-colors"
                       title="Edit medicine"
@@ -496,7 +552,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                       <PencilIcon className="h-4 w-4" />
                     </button>
                     <button
-                      type="button" // IMPORTANT: Add type="button"
+                      type="button"
                       onClick={() => handleDeleteMedicine(index)}
                       className="p-1 text-red-500 hover:text-red-700 transition-colors"
                       title="Delete medicine"
@@ -511,7 +567,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
         )}
       </div>
 
-      {/* Payment Section - MOVED OUTSIDE OF FORM */}
+      {/* Payment Section */}
       <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200">
         <div className="space-y-2 sm:space-y-3 max-w-md ml-auto">
           {/* Subtotal */}
@@ -524,7 +580,10 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
 
           {/* Discount Input */}
           <div className="flex justify-between items-center py-1">
-            <label htmlFor="discount" className="text-xs sm:text-sm text-gray-600">
+            <label
+              htmlFor="discount"
+              className="text-xs sm:text-sm text-gray-600"
+            >
               Discount (%):
             </label>
             <div className="relative">
@@ -534,19 +593,8 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                 name="discount"
                 placeholder="0"
                 step="0.01"
-                value={discount}
-                onChange={(e) => {
-                  let val = e.target.value;
-                  if (val === "") {
-                    setDiscount("");
-                    return;
-                  }
-                  const num = parseFloat(val);
-                  if (!isNaN(num)) {
-                    const clamped = Math.min(Math.max(num, 0), 10);
-                    setDiscount(clamped.toString());
-                  }
-                }}
+                value={discountPercentage}
+                onChange={(e) => handleDiscountChange(e.target.value)}
                 className="w-20 rounded-md border border-gray-300 py-1.5 px-2 text-right text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 min="0"
                 max="10"
@@ -557,11 +605,11 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
             </div>
           </div>
 
-          {/* Discounted Price Display */}
-          {discount && parseFloat(discount) > 0 && (
+          {/* Discount Amount Display */}
+          {discountAmount > 0 && (
             <div className="flex justify-between items-center">
               <span className="text-xs sm:text-sm text-gray-600">
-                Discount Amount:
+                Discount ({((discountAmount / totalPrice) * 100).toFixed(1)}%):
               </span>
               <span className="font-semibold text-red-600 text-sm sm:text-base">
                 -{formatCurrency(discountAmount)}
@@ -569,10 +617,10 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
             </div>
           )}
 
-          {/* Final Amount */}
+          {/* Final Amount (rounded to ceiling) */}
           <div className="flex justify-between items-center pt-2 sm:pt-3 border-t border-gray-300">
             <span className="text-gray-900 font-semibold text-sm sm:text-base">
-              Final Amount:
+              Final Amount (rounded up):
             </span>
             <span className="font-bold text-green-600 text-base sm:text-lg">
               {formatCurrency(discountedPrice)}
@@ -581,7 +629,10 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
 
           {/* Given Amount Input */}
           <div className="flex justify-between items-center py-1">
-            <label htmlFor="givenAmount" className="text-xs sm:text-sm text-gray-600">
+            <label
+              htmlFor="givenAmount"
+              className="text-xs sm:text-sm text-gray-600"
+            >
               Given Amount:
             </label>
             <div className="relative">
@@ -602,13 +653,15 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
           {/* Dynamic Status Display */}
           <div className="flex justify-between items-center">
             <span className="text-xs sm:text-sm text-gray-600">Status:</span>
-            <span className={`font-semibold text-sm sm:text-base ${
-              autoSelectedStatus === "paid" 
-                ? "text-green-600" 
-                : autoSelectedStatus === "partial" 
-                ? "text-blue-600" 
-                : "text-orange-600"
-            }`}>
+            <span
+              className={`font-semibold text-sm sm:text-base ${
+                autoSelectedStatus === "paid"
+                  ? "text-green-600"
+                  : autoSelectedStatus === "partial"
+                  ? "text-blue-600"
+                  : "text-orange-600"
+              }`}
+            >
               {autoSelectedStatus === "paid" && "Paid ✅"}
               {autoSelectedStatus === "partial" && "Partial Payment"}
               {autoSelectedStatus === "pending" && "Pending"}
@@ -616,19 +669,23 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
           </div>
 
           {/* Change Amount for Paid invoices */}
-          {autoSelectedStatus === "paid" && (
+          {autoSelectedStatus === "paid" && changeAmount > 0 && (
             <div className="flex justify-between items-center">
-              <span className="text-xs sm:text-sm text-gray-600">Change Amount:</span>
+              <span className="text-xs sm:text-sm text-gray-600">
+                Change Amount:
+              </span>
               <span className="font-semibold text-blue-600 text-sm sm:text-base">
-                {formatCurrency(changeAmount >= 0 ? changeAmount : 0)}
+                {formatCurrency(changeAmount)}
               </span>
             </div>
           )}
 
           {/* Remaining Amount for Partial invoices */}
-          {autoSelectedStatus === "partial" && (
+          {autoSelectedStatus === "partial" && remainingAmount > 0 && (
             <div className="flex justify-between items-center">
-              <span className="text-xs sm:text-sm text-gray-600">Remaining Amount:</span>
+              <span className="text-xs sm:text-sm text-gray-600">
+                Remaining Amount:
+              </span>
               <span className="font-semibold text-orange-600 text-sm sm:text-base">
                 {formatCurrency(remainingAmount)}
               </span>
@@ -637,9 +694,11 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
         </div>
       </div>
 
-      {/* Invoice Status Section - MOVED OUTSIDE OF FORM */}
+      {/* Invoice Status Section */}
       <fieldset className="mt-6">
-        <legend className="mb-2 block text-sm font-medium">Invoice Status *</legend>
+        <legend className="mb-2 block text-sm font-medium">
+          Invoice Status *
+        </legend>
         <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Pending Status */}
@@ -702,28 +761,8 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
               </label>
             </div>
           </div>
-
-          {/* Status Help Text */}
-          <div className="mt-2 text-xs">
-            {autoSelectedStatus === "partial" ? (
-              <p className="text-blue-600">
-                💡 Customer paid {formatCurrency(givenAmount)} of {formatCurrency(discountedPrice)}. Remaining: {formatCurrency(remainingAmount)}
-              </p>
-            ) : autoSelectedStatus === "paid" ? (
-              <p className="text-green-600">
-                💡 Full payment received. Change: {formatCurrency(changeAmount)}
-              </p>
-            ) : (
-              <p className="text-orange-600">
-                💡 No payment received - Invoice will be pending
-              </p>
-            )}
-          </div>
         </div>
-
-        {/* Hidden inputs for form submission */}
         <input type="hidden" name="status" value={autoSelectedStatus} />
-        <input type="hidden" name="givenAmount" value={givenAmount} />
       </fieldset>
     </>
   );

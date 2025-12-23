@@ -836,7 +836,7 @@ export async function fetchInvoiceSummary(invoiceId) {
 
     const row = invoiceData.rows[0];
 
-    // Second query for medicines
+    // Second query for medicines to calculate subtotal
     const medicinesData = await sql`
       SELECT 
         im.medicine_id as id,
@@ -865,6 +865,11 @@ export async function fetchInvoiceSummary(invoiceId) {
       ORDER BY created_at DESC
     `;
 
+    // Calculate subtotal from medicines (sum of quantity * price_per_unit)
+    const subtotalCents = medicinesData.rows.reduce((sum, medicine) => {
+      return sum + (medicine.quantity * medicine.price_per_unit);
+    }, 0);
+
     const processedPayments = paymentsData.rows.map(payment => ({
       ...payment,
       amount: payment.amount / 100,
@@ -877,25 +882,58 @@ export async function fetchInvoiceSummary(invoiceId) {
       price_per_unit: medicine.price_per_unit / 100
     }));
 
+    // Convert cents to Taka
+    const subtotal = subtotalCents / 100;
+    const amount = row.amount / 100; // This is the discounted/final amount (rounded up)
+    const discountedAmount = Math.max((row.discounted_amount || 0) / 100, 0);
+    const paidAmount = (row.paid_amount || 0) / 100;
+    const totalPaid = row.total_paid_cents / 100;
+    const totalGiven = row.total_given_cents / 100;
+    const totalChange = row.total_change_cents / 100;
+    
+    // Calculate remaining amount (final amount - total paid)
+    const remainingAmount = Math.max(0, amount - totalPaid);
+    
+    // Calculate discount percentage (for display purposes)
+    const discountPercentage = subtotal > 0 ? (discountedAmount / subtotal) * 100 : 0;
+
     return {
       id: row.id,
       customer_id: row.customer_id,
-      amount: row.amount / 100,
+      amount, // Final amount (discounted price rounded up)
       status: row.status,
       date: row.date,
       time: row.time,
-      discounted_amount: Math.max((row.discounted_amount || 0) / 100, 0),
-      paid_amount: (row.paid_amount || 0) / 100,
+      discounted_amount: discountedAmount,
+      paid_amount: paidAmount,
       customer_name: row.customer_name,
       customer_phone: row.customer_phone,
-      total_paid: row.total_paid_cents / 100,
-      total_given: row.total_given_cents / 100,
-      total_change: row.total_change_cents / 100,
-      remaining_amount: Math.max(0, (row.amount - row.total_paid_cents) / 100),
+      total_paid: totalPaid,
+      total_given: totalGiven,
+      total_change: totalChange,
+      remaining_amount: remainingAmount,
       payment_count: parseInt(row.payment_count) || 0,
       payments: processedPayments,
       medicines: processedMedicines,
-      latest_given_amount: processedPayments.length > 0 ? processedPayments[0].given_amount : 0
+      latest_given_amount: processedPayments.length > 0 ? processedPayments[0].given_amount : 0,
+      
+      // New fields for proper display
+      subtotal, // Original total before discount
+      discount_percentage: discountPercentage,
+      
+      // Helper fields for calculations
+      is_paid: row.status === 'paid',
+      is_partial: row.status === 'partial',
+      is_pending: row.status === 'pending',
+      
+      // Original calculation verification
+      calculated_discounted_amount: discountedAmount, // Discount amount that was subtracted
+      calculated_final_amount: amount, // Final amount after discount (rounded up)
+      
+      // For display in EditInvoiceForm
+      original_subtotal: subtotal, // Sum of all medicines
+      applied_discount: discountedAmount, // How much was discounted
+      final_amount_rounded: amount // The final amount stored (rounded up)
     };
   } catch (error) {
     console.error("Database Error:", error);

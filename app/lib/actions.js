@@ -23,15 +23,15 @@ const CreateCustomer = FormSchema.omit({ id: true });
 function capitalizeWords(str) {
   return str
     .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 export async function createCustomer(formData) {
   const rawCustomerName = formData.get("customerName");
   const customerEmail = formData.get("customerEmail");
-  
+
   // Capitalize the customer name
   const customerName = capitalizeWords(rawCustomerName);
 
@@ -54,184 +54,196 @@ export async function createCustomer(formData) {
       message: "Database Error: Failed to Create Customer.",
     };
   }
-  
+
   revalidatePath("/dashboard/customers");
   redirect("/dashboard/customers");
 }
 
 export async function createInvoice(formData, selectedMedicines) {
-    // Get and validate status with proper error handling
-    let getStatus = formData.get('status');
-    
-    // Safety check - if status is null, determine from payment method
-    if (!getStatus) {
-        const paymentMethod = formData.get('paymentMethod') || 'cash';
-        getStatus = paymentMethod === 'credit' ? 'pending' : 'paid';
-    }
+  // Get and validate status
+  let getStatus = formData.get("status") || "pending";
 
-    const { customerName, customerEmail, status } = CreateCustomer.parse({
-        customerName: formData.get('customerName'),
-        customerEmail: formData.get('customerEmail'),
-        status: getStatus,
-    });
-    
-    // Convert to cents and ROUND to integers
-    const totalPrice = Math.round(parseFloat(formData.get('totalPrice')) * 100) || 0;
-    const discountedPrice = Math.round(parseFloat(formData.get('discountedPrice')) * 100) || 0;
-    const discountPercentage = parseFloat(formData.get('discountPercentage')) || 0;
-    const givenAmount = Math.round(parseFloat(formData.get('givenAmount')) * 100) || 0;
-    const changeAmount = Math.round(parseFloat(formData.get('changeAmount')) * 100) || 0;
-    const paymentMethod = formData.get('paymentMethod') || 'cash';
+  const { customerName, customerEmail, status } = CreateCustomer.parse({
+    customerName: formData.get("customerName"),
+    customerEmail: formData.get("customerEmail"),
+    status: getStatus,
+  });
 
-    const invoiceId = uuidv4();
-    const date = new Date();
-    const formattedDateTime = date.toISOString();
-    const formattedDate = date.toISOString().split('T')[0];
-    const formattedTime = date.toTimeString().split(' ')[0];
-    
-    let customerId;
+  // Get values and convert to cents
+  const totalPriceInCents =
+    Math.round(parseFloat(formData.get("totalPrice")) * 100) || 0;
+  const discountedPriceInCents =
+    Math.round(parseFloat(formData.get("discountedPrice")) * 100) || 0;
+  const discountPercentage = Math.min(
+    parseFloat(formData.get("discountPercentage")) || 0,
+    10
+  );
+  // In createInvoice function:
+  const givenAmountInCents =
+    Math.round(parseFloat(formData.get("givenAmount")) * 100) || 0;
+  const changeAmountInCents =
+    Math.round(parseFloat(formData.get("changeAmount")) * 100) || 0;
 
-    try {
-        // Check if the customer already exists
-        const existingCustomer = await sql`
+  const invoiceId = uuidv4();
+  const date = new Date();
+  const formattedDateTime = date.toISOString();
+  const formattedDate = date.toISOString().split("T")[0];
+  const formattedTime = date.toTimeString().split(" ")[0];
+
+  let customerId;
+
+  try {
+    // Check if the customer already exists
+    const existingCustomer = await sql`
             SELECT id FROM customers WHERE phone_no = ${customerEmail}
         `;
 
-        if (existingCustomer?.rows[0]?.id) {
-            customerId = existingCustomer.rows[0].id;
-        } else {
-            customerId = uuidv4();
-            await sql`
+    if (existingCustomer?.rows[0]?.id) {
+      customerId = existingCustomer.rows[0].id;
+    } else {
+      customerId = uuidv4();
+      await sql`
                 INSERT INTO customers (id, name, phone_no)
-                VALUES (${customerId}, ${capitalizeWords(customerName)}, ${customerEmail})
+                VALUES (${customerId}, ${capitalizeWords(
+        customerName
+      )}, ${customerEmail})
             `;
-        }
+    }
 
-        // Use the pre-calculated discounted price in cents
-        const finalAmount = discountedPrice;
+    // Calculate discounted amount
+    const discountedAmountInCents = totalPriceInCents - discountedPriceInCents;
 
-        // Calculate paid_amount based on status and given amount
-        let paidAmount = 0;
-        
-        if (status === 'paid') {
-            paidAmount = finalAmount; // Full payment
-        } else if (status === 'partial') {
-            // For partial payments, paid_amount is the given amount (but not more than final amount)
-            paidAmount = Math.min(givenAmount, finalAmount);
-        } else if (status === 'pending') {
-            paidAmount = 0; // No payment received
-        }
+    // FIX: Handle negative discount due to rounding
+    let finalDiscountedAmountInCents = Math.max(discountedAmountInCents, 0);
+    let finalAmountInCents = discountedPriceInCents;
 
-        // Insert invoice details - all values are already in cents
-        const discountedAmount = totalPrice - discountedPrice;
-        
-        await sql`
+    // If discount is negative (rounded price > original), adjust
+    if (discountedAmountInCents < 0) {
+      console.log("Adjusting negative discount:", {
+        totalPriceInCents,
+        discountedPriceInCents,
+        discountedAmountInCents,
+        discountPercentage,
+      });
+      finalDiscountedAmountInCents = 0;
+      finalAmountInCents = totalPriceInCents; // Use original price
+    }
+
+    // Calculate paid_amount based on status
+    let paidAmountInCents = 0;
+
+    if (status === "paid") {
+      paidAmountInCents = finalAmountInCents; // Full payment of adjusted amount
+    } else if (status === "partial") {
+      // For partial payments, paid_amount is the given amount (but not more than final amount)
+      paidAmountInCents = Math.min(givenAmountInCents, finalAmountInCents);
+    } // For pending, paidAmountInCents remains 0
+
+    // Insert invoice details
+    await sql`
             INSERT INTO invoices (
                 id, customer_id, date, amount, status, time, 
                 discounted_amount, paid_amount
             ) VALUES (
-                ${invoiceId}, ${customerId}, ${formattedDateTime}, ${finalAmount}, 
-                ${status}, ${formattedDateTime}, ${discountedAmount}, 
-                ${paidAmount}
+                ${invoiceId}, ${customerId}, ${formattedDateTime}, ${finalAmountInCents}, 
+                ${status}, ${formattedDateTime}, ${finalDiscountedAmountInCents}, 
+                ${paidAmountInCents}
             )
         `;
 
-        // Create payment record if payment was made (for paid or partial status)
-        if ((status === 'paid' || status === 'partial') && paidAmount > 0) {
-            await sql`
+    // Create payment record if payment was made
+    if ((status === "paid" || status === "partial") && paidAmountInCents > 0) {
+      await sql`
                 INSERT INTO payments (
                     invoice_id, amount, given_amount, payment_date, 
                     payment_time, created_at
                 ) VALUES (
-                    ${invoiceId}, ${paidAmount}, ${givenAmount}, 
+                    ${invoiceId}, ${paidAmountInCents}, ${givenAmountInCents}, 
                     ${formattedDate}, ${formattedTime}, ${formattedDateTime}
                 )
             `;
-        }
+    }
 
-        // Process each medicine in the invoice
-        for (const medicine of selectedMedicines) {
-            const { id, quantity, price, medicineName } = medicine;
-            const pricePerUnit = Math.round(parseFloat(price) * 100) || 0; // Convert to cents
-            const customerQuantity = parseInt(quantity) || 0;
+    // Process each medicine in the invoice
+    for (const medicine of selectedMedicines) {
+      const { id, quantity, price, medicineName } = medicine;
+      const pricePerUnitInCents = Math.round(parseFloat(price) * 100) || 0;
+      const customerQuantity = parseInt(quantity) || 0;
 
-            // 1. Insert into invoice_medicines table - price in cents
-            await sql`
+      // 1. Insert into invoice_medicines table
+      await sql`
                 INSERT INTO invoice_medicines (invoice_id, medicine_id, quantity, price_per_unit)
-                VALUES (${invoiceId}, ${id}, ${customerQuantity}, ${pricePerUnit})
+                VALUES (${invoiceId}, ${id}, ${customerQuantity}, ${pricePerUnitInCents})
             `;
 
-            // 2. Update medicine price in medicinelist table if changed
-            const currentMedicine = await sql`
+      // 2. Update medicine price in medicinelist table if changed
+      const currentMedicine = await sql`
                 SELECT price FROM medicinelist WHERE id = ${id}
             `;
 
-            if (currentMedicine.rows.length > 0) {
-                const currentPriceInCents = currentMedicine.rows[0].price;
-                
-                // Check if price has changed (compare in cents)
-                if (Math.abs(currentPriceInCents - pricePerUnit) > 1) { // 1 cent difference
-                    await sql`
+      if (currentMedicine.rows.length > 0) {
+        const currentPriceInCents = currentMedicine.rows[0].price;
+
+        // Check if price has changed (compare in cents)
+        if (Math.abs(currentPriceInCents - pricePerUnitInCents) > 1) {
+          await sql`
                         UPDATE medicinelist 
-                        SET price = ${pricePerUnit} 
+                        SET price = ${pricePerUnitInCents} 
                         WHERE id = ${id}
                     `;
-                }
-            }
+        }
+      }
 
-            // 3. SMART INVENTORY UPDATE
-            const currentInventory = await sql`
+      // 3. SMART INVENTORY UPDATE
+      const currentInventory = await sql`
                 SELECT quantity FROM shopinventory WHERE medicine_id = ${id}
             `;
 
-            if (currentInventory.rows.length > 0) {
-                const currentStock = currentInventory.rows[0].quantity;
-                
-                if (currentStock >= customerQuantity) {
-                    const newStock = currentStock - customerQuantity;
-                    await sql`
+      if (currentInventory.rows.length > 0) {
+        const currentStock = currentInventory.rows[0].quantity;
+
+        if (currentStock >= customerQuantity) {
+          const newStock = currentStock - customerQuantity;
+          await sql`
                         UPDATE shopinventory 
                         SET quantity = ${newStock} 
                         WHERE medicine_id = ${id}
                     `;
-                } else {
-                    await sql`
+        } else {
+          await sql`
                         UPDATE shopinventory 
                         SET quantity = 0 
                         WHERE medicine_id = ${id}
                     `;
-                }
-            } else {
-                await sql`
+        }
+      } else {
+        await sql`
                     INSERT INTO shopinventory (medicine_id, quantity)
                     VALUES (${id}, 0)
                 `;
-            }
-        }
-
-        // Revalidate the invoices page
-        revalidatePath('/dashboard/invoices');
-        
-        // Return success with redirect information
-        return { 
-            success: true, 
-            message: 'Invoice created successfully!',
-            redirectTo: '/dashboard/invoices',
-            data: {
-                invoiceId,
-                status,
-                paidAmount: paidAmount / 100,
-                remainingAmount: (finalAmount - paidAmount) / 100
-            }
-        };
-
-    } catch (error) {
-        console.error('Database Error: Failed to Create Invoice.', error);
-        return {
-            success: false,
-            message: 'Database Error: Failed to Create Invoice.'
-        };
+      }
     }
+    revalidatePath("/dashboard/invoices");
+    
+
+    return {
+      success: true,
+      message: "Invoice created successfully!",
+      redirectTo: "/dashboard/invoices",
+      data: {
+        invoiceId,
+        status,
+        paidAmount: paidAmountInCents / 100,
+        remainingAmount: (finalAmountInCents - paidAmountInCents) / 100,
+      },
+    };
+  } catch (error) {
+    console.error("Database Error: Failed to Create Invoice.", error);
+    return {
+      success: false,
+      message: "Database Error: Failed to Create Invoice.",
+    };
+  }
 }
 
 // Update your schema to include givenAmount
@@ -249,8 +261,8 @@ export async function updateInvoice(id, formData) {
 
   const date = new Date();
   const formattedDateTime = date.toISOString();
-  const formattedDate = date.toISOString().split('T')[0];
-  const formattedTime = date.toTimeString().split(' ')[0];
+  const formattedDate = date.toISOString().split("T")[0];
+  const formattedTime = date.toTimeString().split(" ")[0];
 
   try {
     const givenAmountInCents = Math.round(parseFloat(givenAmount) * 100) || 0;
@@ -263,7 +275,7 @@ export async function updateInvoice(id, formData) {
     `;
 
     if (currentInvoice.rows.length === 0) {
-      return { success: false, message: 'Invoice not found.' };
+      return { success: false, message: "Invoice not found." };
     }
 
     const invoiceData = currentInvoice.rows[0];
@@ -276,25 +288,25 @@ export async function updateInvoice(id, formData) {
     let finalStatus = status;
 
     // Calculate payment amount based on status transition
-    if (status === 'paid') {
-      if (currentStatus === 'pending') {
+    if (status === "paid") {
+      if (currentStatus === "pending") {
         // First time payment - full payment
         paymentAmountInCents = invoiceAmount;
         newPaidAmount = invoiceAmount;
-      } else if (currentStatus === 'partial') {
+      } else if (currentStatus === "partial") {
         // Final payment to complete the invoice
         paymentAmountInCents = invoiceAmount - currentPaidAmount;
         newPaidAmount = invoiceAmount;
       }
-    } else if (status === 'partial') {
+    } else if (status === "partial") {
       // Partial payment - pay as much as possible from given amount
       const remainingAmount = invoiceAmount - currentPaidAmount;
       paymentAmountInCents = Math.min(givenAmountInCents, remainingAmount);
       newPaidAmount = currentPaidAmount + paymentAmountInCents;
-      
+
       // If payment covers the remaining amount, automatically mark as paid
       if (newPaidAmount >= invoiceAmount) {
-        finalStatus = 'paid';
+        finalStatus = "paid";
         newPaidAmount = invoiceAmount;
         paymentAmountInCents = invoiceAmount - currentPaidAmount;
       }
@@ -302,7 +314,7 @@ export async function updateInvoice(id, formData) {
 
     // Validate payment amount
     if (paymentAmountInCents < 0) {
-      return { success: false, message: 'Invalid payment amount.' };
+      return { success: false, message: "Invalid payment amount." };
     }
 
     // Update invoice with status, paid amount, and time
@@ -323,12 +335,16 @@ export async function updateInvoice(id, formData) {
     }
 
     // If status is being changed without payment (e.g., mark as paid without payment)
-    if (status === 'paid' && paymentAmountInCents === 0 && currentStatus !== 'paid') {
+    if (
+      status === "paid" &&
+      paymentAmountInCents === 0 &&
+      currentStatus !== "paid"
+    ) {
       // This handles cases where you want to mark as paid without recording a payment
       // For example, complimentary invoices or waived payments
       paymentAmountInCents = invoiceAmount - currentPaidAmount;
       newPaidAmount = invoiceAmount;
-      
+
       await sql`
         UPDATE invoices
         SET status = 'paid', 
@@ -337,40 +353,41 @@ export async function updateInvoice(id, formData) {
       `;
     }
 
-    revalidatePath('/dashboard/invoices');
-    return { 
-      success: true, 
-      message: `Invoice ${finalStatus === 'paid' ? 'paid' : 'updated'} successfully!`,
+    revalidatePath("/dashboard/invoices");
+    return {
+      success: true,
+      message: `Invoice ${
+        finalStatus === "paid" ? "paid" : "updated"
+      } successfully!`,
       data: {
         paymentAmount: paymentAmountInCents / 100,
         givenAmount: givenAmountInCents / 100,
-        changeAmount: (givenAmountInCents - paymentAmountInCents) / 100
-      }
+        changeAmount: (givenAmountInCents - paymentAmountInCents) / 100,
+      },
     };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
         success: false,
         message: "Invalid form data.",
-        errors: error.errors.map(e => e.message)
+        errors: error.errors.map((e) => e.message),
       };
     }
-    
-    console.error('Database Error: Failed to Update Invoice.', error);
+
+    console.error("Database Error: Failed to Update Invoice.", error);
     return {
       success: false,
-      message: "Database Error: Failed to Update Invoice."
+      message: "Database Error: Failed to Update Invoice.",
     };
   }
 }
 
 export async function deleteInvoice(id) {
-  
   try {
-    await sql `DELETE FROM invoices WHERE id = ${id}`;
-    await sql `DELETE FROM invoice_medicines WHERE invoice_id = ${id}`;
+    await sql`DELETE FROM invoices WHERE id = ${id}`;
+    await sql`DELETE FROM invoice_medicines WHERE invoice_id = ${id}`;
     revalidatePath("/dashboard/invoices");
-    
+
     return {
       success: true,
       message: "Invoice deleted successfully!",
@@ -522,43 +539,48 @@ export async function editShopMedicine({ id, quantity, price }) {
   redirect("/dashboard/myshop");
 }
 
-
-
 // Payment Schema
 const PaymentSchema = z.object({
   customerId: z.string().uuid(),
   totalAmount: z.number().min(0.01, "Amount must be greater than 0"),
-  allocations: z.array(z.object({
-    invoiceId: z.string().uuid(),
-    allocatedAmount: z.number().min(0.01, "Allocated amount must be greater than 0")
-  })),
-  paymentDate: z.string()
+  allocations: z.array(
+    z.object({
+      invoiceId: z.string().uuid(),
+      allocatedAmount: z
+        .number()
+        .min(0.01, "Allocated amount must be greater than 0"),
+    })
+  ),
+  paymentDate: z.string(),
 });
 
 // app/lib/actions.js - Updated processPayment function without change_amount column
 export async function processPayment(prevState, formData) {
   let client;
-  
+
   try {
     // Parse and validate the form data
-    const { customerId, totalAmount, allocations, paymentDate } = PaymentSchema.parse({
-      customerId: formData.get('customerId'),
-      totalAmount: parseFloat(formData.get('totalAmount')),
-      allocations: JSON.parse(formData.get('allocations')),
-      paymentDate: formData.get('paymentDate')
-    });
+    const { customerId, totalAmount, allocations, paymentDate } =
+      PaymentSchema.parse({
+        customerId: formData.get("customerId"),
+        totalAmount: parseFloat(formData.get("totalAmount")),
+        allocations: JSON.parse(formData.get("allocations")),
+        paymentDate: formData.get("paymentDate"),
+      });
 
     // Convert amount to paisa (integer)
     const totalAmountInPaisa = Math.round(totalAmount * 100);
 
     // Start transaction
     client = await sql.connect();
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const processedAllocations = [];
 
     for (const allocation of allocations) {
-      const allocatedAmountInPaisa = Math.round(allocation.allocatedAmount * 100);
+      const allocatedAmountInPaisa = Math.round(
+        allocation.allocatedAmount * 100
+      );
 
       // 1. Validate invoice exists and get current data
       const invoiceCheck = await client.query(
@@ -580,7 +602,9 @@ export async function processPayment(prevState, formData) {
 
       // Validate payment doesn't exceed invoice amount
       if (allocatedAmountInPaisa > pendingAmount) {
-        throw new Error(`Payment exceeds pending amount for invoice ${allocation.invoiceId}`);
+        throw new Error(
+          `Payment exceeds pending amount for invoice ${allocation.invoiceId}`
+        );
       }
 
       // 2. Insert payment record
@@ -597,11 +621,11 @@ export async function processPayment(prevState, formData) {
 
       if (allocatedAmountInPaisa === pendingAmount) {
         // FULL PAYMENT
-        newStatus = 'paid';
+        newStatus = "paid";
         newGivenAmount = allocatedAmountInPaisa; // Customer gave exact amount
       } else {
         // PARTIAL PAYMENT
-        newStatus = 'partial';
+        newStatus = "partial";
         newGivenAmount = allocatedAmountInPaisa; // Customer gave partial amount
       }
 
@@ -616,7 +640,8 @@ export async function processPayment(prevState, formData) {
       );
 
       // Calculate change amount for response (given_amount - amount)
-      const changeAmount = newGivenAmount > invoiceAmount ? newGivenAmount - invoiceAmount : 0;
+      const changeAmount =
+        newGivenAmount > invoiceAmount ? newGivenAmount - invoiceAmount : 0;
 
       processedAllocations.push({
         invoiceId: allocation.invoiceId,
@@ -625,53 +650,56 @@ export async function processPayment(prevState, formData) {
         givenAmount: newGivenAmount / 100,
         invoiceAmount: invoiceAmount / 100,
         changeAmount: changeAmount / 100, // Calculated change
-        paymentId: paymentResult.rows[0].id
+        paymentId: paymentResult.rows[0].id,
       });
     }
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     // Revalidate relevant paths
-    revalidatePath('/dashboard/invoices');
-    revalidatePath('/dashboard/customers');
-    revalidatePath('/dashboard/payments');
+    revalidatePath("/dashboard/invoices");
+    revalidatePath("/dashboard/customers");
+    revalidatePath("/dashboard/payments");
 
     // Generate success message
-    const fullyPaid = processedAllocations.filter(a => a.newStatus === 'paid').length;
-    const partiallyPaid = processedAllocations.filter(a => a.newStatus === 'partial').length;
-    
+    const fullyPaid = processedAllocations.filter(
+      (a) => a.newStatus === "paid"
+    ).length;
+    const partiallyPaid = processedAllocations.filter(
+      (a) => a.newStatus === "partial"
+    ).length;
+
     let message = `Payment processed successfully! `;
     message += `Amount: ৳${totalAmount.toFixed(2)}. `;
     if (fullyPaid > 0) message += `${fullyPaid} invoice(s) fully paid. `;
-    if (partiallyPaid > 0) message += `${partiallyPaid} invoice(s) partially paid.`;
+    if (partiallyPaid > 0)
+      message += `${partiallyPaid} invoice(s) partially paid.`;
 
     return {
       success: true,
       message: message,
       totalAmount: totalAmount,
-      allocations: processedAllocations
+      allocations: processedAllocations,
     };
-
   } catch (error) {
     // Rollback transaction if client is connected
     if (client) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
     }
-    
-    console.error('Database Error: Failed to Process Payment.', error);
-    
+
+    console.error("Database Error: Failed to Process Payment.", error);
+
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        message: 'Validation failed. Please check your input.'
+        message: "Validation failed. Please check your input.",
       };
     }
 
     return {
       success: false,
-      message: error.message || 'Database Error: Failed to Process Payment.'
+      message: error.message || "Database Error: Failed to Process Payment.",
     };
-    
   } finally {
     // Release client back to pool
     if (client) {
@@ -699,7 +727,7 @@ export async function fetchPendingInvoices(customerId) {
     `;
 
     // Convert amounts from paisa to taka and calculate change
-    const invoices = result.rows.map(invoice => ({
+    const invoices = result.rows.map((invoice) => ({
       ...invoice,
       amount: invoice.amount / 100,
       paid_amount: (invoice.paid_amount || 0) / 100,
@@ -707,7 +735,7 @@ export async function fetchPendingInvoices(customerId) {
 
     return invoices;
   } catch (error) {
-    console.error('Database Error: Failed to fetch pending invoices.', error);
-    throw new Error('Failed to fetch pending invoices.');
+    console.error("Database Error: Failed to fetch pending invoices.", error);
+    throw new Error("Failed to fetch pending invoices.");
   }
 }

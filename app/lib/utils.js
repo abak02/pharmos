@@ -185,9 +185,7 @@ export default function Breadcrumbs({
 
 
 export function GetRandomAvatar({name}) {
-  
-  
-    const gradients = [
+  const gradients = [
     "from-blue-500 to-purple-600",
     "from-green-500 to-teal-600",
     "from-purple-500 to-pink-600",
@@ -208,16 +206,14 @@ export function GetRandomAvatar({name}) {
   const index = Math.abs(hash) % gradients.length;
 
   return(
-    <>
-        <div
-          className={`w-12 h-12 bg-gradient-to-br ${gradients[index]} rounded-full flex items-center justify-center shadow-lg`}
-        >
-          <span className="text-white font-semibold text-lg">
-            {name.charAt(0).toUpperCase()}
-          </span>
-        </div>
-      
-    </>
+    <div className="flex-shrink-0"> {/* Add this wrapper inside component */}
+      <div
+        className={`w-12 h-12 bg-gradient-to-br ${gradients[index]} rounded-full flex items-center justify-center shadow-lg`}
+      >
+        <span className="text-white font-semibold text-lg">
+          {name.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    </div>
   );
-
 }
