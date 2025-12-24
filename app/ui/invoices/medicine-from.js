@@ -109,7 +109,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     if (newStatus !== autoSelectedStatus) {
       setAutoSelectedStatus(newStatus);
     }
-  }, [addedMedicines, discountPercentage, givenAmount]);
+  }, [addedMedicines, autoSelectedStatus, changeAmount, discountAmount, discountPercentage, discountedPrice, givenAmount, remainingAmount, totalPrice]);
 
   // Update parent when prices change - with infinite loop prevention
   useEffect(() => {
