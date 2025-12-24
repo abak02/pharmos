@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { lusitana } from "../fonts";
 import { fetchFilteredMedicineWithStockForSuggestion } from "@/app/lib/data";
-import { formatCurrency } from "@/app/lib/utils";
+import { DosageIcon, formatCurrency } from "@/app/lib/utils";
 import AddButton from "./addbutton";
 import {
   CheckIcon,
@@ -51,7 +51,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
       (acc, medicine) => acc + parseFloat(medicine.totalPrice),
       0
     );
-    
+
     // Only update if total actually changed
     if (Math.abs(total - totalPrice) > 0.01) {
       setTotalPrice(total);
@@ -78,7 +78,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     if (Math.abs(discounted - discountedPrice) > 0.01) {
       setDiscountedPrice(discounted);
     }
-    
+
     if (Math.abs(actualDiscountAmt - discountAmount) > 0.01) {
       setDiscountAmount(actualDiscountAmt);
     }
@@ -91,7 +91,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     if (Math.abs(change - changeAmount) > 0.01) {
       setChangeAmount(change);
     }
-    
+
     if (Math.abs(remaining - remainingAmount) > 0.01) {
       setRemainingAmount(remaining);
     }
@@ -109,7 +109,17 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     if (newStatus !== autoSelectedStatus) {
       setAutoSelectedStatus(newStatus);
     }
-  }, [addedMedicines, autoSelectedStatus, changeAmount, discountAmount, discountPercentage, discountedPrice, givenAmount, remainingAmount, totalPrice]);
+  }, [
+    addedMedicines,
+    autoSelectedStatus,
+    changeAmount,
+    discountAmount,
+    discountPercentage,
+    discountedPrice,
+    givenAmount,
+    remainingAmount,
+    totalPrice,
+  ]);
 
   // Update parent when prices change - with infinite loop prevention
   useEffect(() => {
@@ -118,7 +128,8 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     const currentValues = {
       totalPrice: totalPrice || 0,
       discountedPrice: discountedPrice || 0,
-      discountPercentage: totalPrice > 0 ? (discountAmount / totalPrice) * 100 : 0,
+      discountPercentage:
+        totalPrice > 0 ? (discountAmount / totalPrice) * 100 : 0,
       givenAmount: parseFloat(givenAmount) || 0,
       changeAmount: changeAmount || 0,
       remainingAmount: remainingAmount || 0,
@@ -127,13 +138,17 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
 
     // Check if values actually changed
     const prevValues = prevValuesRef.current;
-    const hasChanged = 
+    const hasChanged =
       Math.abs(prevValues.totalPrice - currentValues.totalPrice) > 0.01 ||
-      Math.abs(prevValues.discountedPrice - currentValues.discountedPrice) > 0.01 ||
-      Math.abs(prevValues.discountPercentage - currentValues.discountPercentage) > 0.01 ||
+      Math.abs(prevValues.discountedPrice - currentValues.discountedPrice) >
+        0.01 ||
+      Math.abs(
+        prevValues.discountPercentage - currentValues.discountPercentage
+      ) > 0.01 ||
       Math.abs(prevValues.givenAmount - currentValues.givenAmount) > 0.01 ||
       Math.abs(prevValues.changeAmount - currentValues.changeAmount) > 0.01 ||
-      Math.abs(prevValues.remainingAmount - currentValues.remainingAmount) > 0.01 ||
+      Math.abs(prevValues.remainingAmount - currentValues.remainingAmount) >
+        0.01 ||
       prevValues.status !== currentValues.status;
 
     if (hasChanged) {
@@ -169,12 +184,12 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
   // Handle given amount change
   const handleGivenAmountChange = useCallback((amount) => {
     const cleaned = amount.replace(/[^\d.]/g, "");
-    
+
     if (cleaned === "") {
       setGivenAmount("");
       return;
     }
-    
+
     const num = parseFloat(cleaned);
     if (!isNaN(num)) {
       setGivenAmount(num.toString());
@@ -182,15 +197,18 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
   }, []);
 
   // Handle manual status selection
-  const handleStatusChange = useCallback((status) => {
-    setAutoSelectedStatus(status);
+  const handleStatusChange = useCallback(
+    (status) => {
+      setAutoSelectedStatus(status);
 
-    if (status === "paid") {
-      setGivenAmount(discountedPrice.toString());
-    } else if (status === "pending") {
-      setGivenAmount("");
-    }
-  }, [discountedPrice]);
+      if (status === "paid") {
+        setGivenAmount(discountedPrice.toString());
+      } else if (status === "pending") {
+        setGivenAmount("");
+      }
+    },
+    [discountedPrice]
+  );
 
   // Medicine search with debouncing
   const handleSearch = useDebouncedCallback(async (term) => {
@@ -204,16 +222,19 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     }
   }, 300);
 
-  const handleSuggestionClick = useCallback((medicine) => {
-    setPrice(medicine.price);
-    setMedicineName(medicine.brandname);
-    setType(medicine.dosagedescription);
-    setId(medicine.id);
-    setSuggestions(false);
-    if (errors.medicineName) {
-      setErrors((prev) => ({ ...prev, medicineName: "" }));
-    }
-  }, [errors.medicineName]);
+  const handleSuggestionClick = useCallback(
+    (medicine) => {
+      setPrice(medicine.price);
+      setMedicineName(medicine.brandname);
+      setType(medicine.dosagedescription);
+      setId(medicine.id);
+      setSuggestions(false);
+      if (errors.medicineName) {
+        setErrors((prev) => ({ ...prev, medicineName: "" }));
+      }
+    },
+    [errors.medicineName]
+  );
 
   const validateForm = useCallback(() => {
     const newErrors = {};
@@ -263,31 +284,46 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
     if (onAddMedicine) {
       onAddMedicine(updatedMedicines);
     }
-  }, [validateForm, price, quantity, medicineName, type, id, addedMedicines, onAddMedicine]);
+  }, [
+    validateForm,
+    price,
+    quantity,
+    medicineName,
+    type,
+    id,
+    addedMedicines,
+    onAddMedicine,
+  ]);
 
-  const handleDeleteMedicine = useCallback((index) => {
-    const updatedMedicines = addedMedicines.filter((_, i) => i !== index);
-    setAddedMedicines(updatedMedicines);
-    if (onAddMedicine) {
-      onAddMedicine(updatedMedicines);
-    }
-  }, [addedMedicines, onAddMedicine]);
+  const handleDeleteMedicine = useCallback(
+    (index) => {
+      const updatedMedicines = addedMedicines.filter((_, i) => i !== index);
+      setAddedMedicines(updatedMedicines);
+      if (onAddMedicine) {
+        onAddMedicine(updatedMedicines);
+      }
+    },
+    [addedMedicines, onAddMedicine]
+  );
 
-  const handleEditMedicine = useCallback((index) => {
-    const medicineToEdit = addedMedicines[index];
-    const updatedMedicines = addedMedicines.filter((_, i) => i !== index);
-    setAddedMedicines(updatedMedicines);
-    if (onAddMedicine) {
-      onAddMedicine(updatedMedicines);
-    }
+  const handleEditMedicine = useCallback(
+    (index) => {
+      const medicineToEdit = addedMedicines[index];
+      const updatedMedicines = addedMedicines.filter((_, i) => i !== index);
+      setAddedMedicines(updatedMedicines);
+      if (onAddMedicine) {
+        onAddMedicine(updatedMedicines);
+      }
 
-    setMedicineName(medicineToEdit.medicineName);
-    setQuantity(medicineToEdit.quantity);
-    setPrice(medicineToEdit.price);
-    setType(medicineToEdit.type);
-    setId(medicineToEdit.id);
-    setErrors({});
-  }, [addedMedicines, onAddMedicine]);
+      setMedicineName(medicineToEdit.medicineName);
+      setQuantity(medicineToEdit.quantity);
+      setPrice(medicineToEdit.price);
+      setType(medicineToEdit.type);
+      setId(medicineToEdit.id);
+      setErrors({});
+    },
+    [addedMedicines, onAddMedicine]
+  );
 
   const getStockStatusStyle = useCallback((stockQuantity) => {
     if (stockQuantity > 10) {
@@ -355,14 +391,24 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                     className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center border-b border-gray-100 last:border-b-0"
                   >
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">
-                        {medicine.brandname}
-                        <span className="text-xs ml-1 text-gray-500">
-                          {medicine.dosagedescription}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {medicine.genericname} {medicine.strength}
+                      <div className="flex items-center gap-2">
+                        <div className="flex-shrink-0 pt-0.5">
+                          <DosageIcon
+                            dosageDescription={medicine.dosagedescription}
+                            size={20}
+                          />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {medicine.brandname}
+                            
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                             {medicine.dosagedescription} <span className="text-xs text-gray-600">
+                              {medicine.strength}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">

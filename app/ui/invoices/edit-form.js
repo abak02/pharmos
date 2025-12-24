@@ -47,7 +47,7 @@ export default function EditInvoiceForm({ invoiceSummary }) {
   const isPaidInvoice = invoiceSummary?.status === "paid";
   const isPartialInvoice = invoiceSummary?.status === "partial";
   const isPendingInvoice = invoiceSummary?.status === "pending";
-
+  
   // Initialize given amount based on latest payment or pending amount
   useEffect(() => {
     if (invoiceSummary) {
@@ -153,7 +153,7 @@ export default function EditInvoiceForm({ invoiceSummary }) {
 
   const handlePrint = () => {
     const printContent = document.getElementById("pos-receipt");
-    const printWindow = window.open("", "_blank", "width=240,height=400");
+    const printWindow = window.open("", "_blank", "width=240,height=400,");
 
     printWindow.document.write(`
       <html>
@@ -163,7 +163,7 @@ export default function EditInvoiceForm({ invoiceSummary }) {
           <style>
             @media print {
               body { margin: 0; padding: 0; }
-              @page { margin: 0; size: 58mm auto; }
+              @page { margin: 0; size: 58mm auto; padding: 2; }
             }
           </style>
         </head>
@@ -200,7 +200,7 @@ export default function EditInvoiceForm({ invoiceSummary }) {
         setTimeout(() => {
           router.push("/dashboard/invoices");
           router.refresh();
-        }, 1000);
+        }, 300);
       } else {
         throw new Error(result?.message || "Failed to update invoice");
       }
@@ -212,6 +212,7 @@ export default function EditInvoiceForm({ invoiceSummary }) {
   };
 
   return (
+    
     <>
       <div className="max-w-6xl mx-auto space-y-4 md:space-y-6 px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -368,15 +369,19 @@ export default function EditInvoiceForm({ invoiceSummary }) {
               Purchased Medicines
             </h2>
             {invoiceSummary.medicines.map((medicine, index) => (
+              
               <li
                 key={medicine.id || index}
                 className="mb-4 p-3 bg-white rounded-lg border border-gray-200 list-none"
               >
                 <div className="md:hidden">
                   <div className="mb-2">
-                    <span className="font-medium text-gray-900 text-m">
-                      {medicine.brandname}
+                    <span className="font-medium text-gray-900 text-md">
+                      {medicine.brandname} 
                     </span>
+                    <span className="text-xs text-gray-600 ml-1">
+                      {medicine.strength}
+                    </span> 
                     {medicine.dosagedescription && (
                       <span className="text-xs text-gray-500 ml-1">
                         ({medicine.dosagedescription})
@@ -409,6 +414,9 @@ export default function EditInvoiceForm({ invoiceSummary }) {
                     <span className="font-medium text-gray-900 min-w-0 flex-1">
                       {medicine.brandname}
                     </span>
+                    <span className="text-xs text-gray-600 ml-1">
+                      {medicine.strength}
+                    </span> 
                     {medicine.dosagedescription && (
                       <span className="text-xs text-gray-500 flex-shrink-0">
                         ({medicine.dosagedescription})

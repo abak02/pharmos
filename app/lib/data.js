@@ -843,6 +843,7 @@ export async function fetchInvoiceSummary(invoiceId) {
         im.medicine_id,
         ml.brandname,
         ml.dosagedescription,
+        ml.strength,
         im.quantity,
         im.price_per_unit
       FROM invoice_medicines im

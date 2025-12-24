@@ -126,7 +126,7 @@ function generateReceiptHTML(invoice, invoiceSummary) {
           ${medicineList.map((medicine, idx) => `
             <div class="grid grid-cols-10 gap-0 border-b border-dashed border-gray-300 pb-1">
               <div class="col-span-5 truncate leading-tight">
-                ${medicine.brandname}
+                ${medicine.brandname} ${medicine.strength}
               </div>
               <div class="col-span-1 text-right">${medicine.quantity}</div>
               <div class="col-span-2 text-right">

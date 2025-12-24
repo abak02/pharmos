@@ -52,7 +52,7 @@ export default function POSReceipt({ invoice, customer, medicineList, showPrevie
               className="grid grid-cols-10 gap-0 border-b border-dashed border-gray-300 pb-1"
             >
               <div className="col-span-5 truncate leading-tight">
-                {medicine.brandname}
+                {medicine.brandname} {medicine.strength}
               </div>
               <div className="col-span-1 text-right">{medicine.quantity}</div>
               <div className="col-span-2 text-right">

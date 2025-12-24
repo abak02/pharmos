@@ -151,6 +151,7 @@ export function generateYAxis(revenue) {
 import { clsx } from 'clsx';
 import Link from 'next/link';
 import { lusitana } from '@/app/ui/fonts';
+import Image from 'next/image';
 
 class Breadcrumb {
   label;
@@ -216,4 +217,288 @@ export function GetRandomAvatar({name}) {
       </div>
     </div>
   );
+}
+
+
+// Map dosage descriptions to icon filenames
+const DOSAGE_ICON_MAP = {
+  // Tablet
+  'tablet.png': [
+    'tablet', 'mups tablet', 'm r tablet', 'xr tablet', 'pr tablet', 
+    'chewable tablet', 'mouth dissolving tablet', 'cr tablet', 'er tablet', 
+    'ors tablet', 'odt tablet', 'rapid tablet', 'dispersible tablet', 
+    'dr tablet', 'md tablet', 'sr tablet', 'effervescent tablet',
+    'oral soluble film', 'orodispersible tablet'
+  ],
+  
+  // Capsule
+  'capsule.png': [
+    'capsule', 'sr capsule', 'er capsule', 'delayed release capsule', 
+    'extended release capsule', 'm r capsule', 'cr capsule', 
+    'sprinkle capsule', 'soft gelatin capsule', 'inhalation capsule',
+    'cozycap'
+  ],
+  
+  // Eyedrops
+  'eyedrops.png': [
+    'eye drops', 'eye solution', 
+    'eye cleanser solution', 'ophthalmic emulsion', 'eye & nasal drops', 
+    'eye and ear drops', 'eye, ear & nasal drops'
+  ],
+  
+  // Injection
+  'injection.png': [
+    'injection', 'iv injection', 'im injection', 'iv/im injection', 
+    'solution for injection', 'water for injection', 'iv infusion',
+    'needle for syringe', 'syringe'
+  ],
+  
+  // Inhaler
+  'inhaler.png': [
+    'inhaler', 'inhalation aerosol', 'metered dose inhaler', 'hfa inhaler', 
+    'dry powder inhaler', 'aerosol inhalation', 'inhalation liquid', 
+    'inhalation solution', 'nebuliser solution', 'nebuliser suspension',
+    'respirator suspension', 'inhalation capsule'
+  ],
+  
+  // Suppository
+  'suppository.png': [
+    'suppository', 'vaginal suppository', 'per rectal', 'vaginal pessary',
+    'vaginal tablet', 'implant', 'bolus'
+  ],
+  
+  // Syrup solutions
+  'syrup-solutions.png': [
+    'solution', 'viscoelastic solution', 'resperitory solution',
+    'dialysis solution', 'solution fo root cannel', 'solution for infusion',
+    'irrigation solution', 'canal irrigation', 'root canal agent',
+    'oral solution', 'inhalation solution', 'nebuliser solution',
+    'pour on (solution)', 'tincture', 'gas', 'blood bag', 'pvc bag',
+    'blood tubing set'
+  ],
+  
+  // Traditional syrup
+  'syrup.png': [
+    'syrup', 'oral syrup', 'cough syrup', 'oral liquid', 'elixir', 'linctus',
+    'oral suspension', 'oral emulsion', 'oral paste', 'oral dental gel', 
+    'oral gel', 'oral saline', 'oral drops', 'paediatric drops', 'oral solution', 'suspension'
+  ],
+  
+  // Cream (includes ointment, gel, lotion)
+  'cream.png': [
+    'cream', 'vaginal cream', 'ointment', 'lotion', 'gel', 'emulgel',
+    'vaginal gel', 'cervical gel', 'hand rub', 'rectal ointment',
+    'scalp lotion', 'scalp ointment', 'shampoo', 'scrub',
+    'topical solution', 'topical suspension', 'butterfly',
+    'mouth wash', 'mouth wash antiseptic', 'gargle & mouth wash','eye and ear ointment', 'eye ointment',
+    'eye gel', 'Eye Ointment'
+  ],
+  
+  // Powder
+  'powder.png': [
+    'powder', 'oral powder', 'sached powder', 'powder for suspension',
+    'powder for solution', 'powder for oral solution', 'powder for pedriatric drop',
+    'water soluble powder', 'effervescent granules', 'pellets',
+    'granules for suspension', 'pellets for suspension',
+    'dr granules for suspension'
+  ],
+  
+  // Spray
+  'spray.png': [
+    'spray', 'nasal spray', 'ear spray', 'aerosol inhalation'
+  ]
+};
+
+const DEFAULT_ICON = 'tablet.png';
+
+/**
+ * Get icon filename for a dosage description
+ */
+const getIconFilename = (dosageDescription) => {
+  if (!dosageDescription) return DEFAULT_ICON;
+  
+  const lowerCaseDescription = dosageDescription.toLowerCase().trim();
+  
+  // Priority checks
+  if (lowerCaseDescription.includes('inject') || 
+      lowerCaseDescription.includes('infusion') ||
+      lowerCaseDescription.includes('iv') || 
+      lowerCaseDescription.includes('im') ||
+      lowerCaseDescription.includes('syringe')) {
+    return 'injection.png';
+  }
+  if (lowerCaseDescription.includes('ointment') || 
+      lowerCaseDescription.includes('cream') ||
+      lowerCaseDescription.includes('gel')
+      ) {
+    return 'cream.png';
+  }
+  
+  if (lowerCaseDescription.includes('eye') || 
+      lowerCaseDescription.includes('ophthalmic')) {
+    return 'eyedrops.png';
+  }
+  
+  if (lowerCaseDescription.includes('inhal') || 
+      lowerCaseDescription.includes('nebuliser')) {
+    return 'inhaler.png';
+  }
+  
+  if (lowerCaseDescription.includes('suppository') ||
+      lowerCaseDescription.includes('per rectal') ||
+      lowerCaseDescription.includes('vaginal') && 
+      (lowerCaseDescription.includes('suppos') || lowerCaseDescription.includes('pessary'))) {
+    return 'suppository.png';
+  }
+  
+  // Check map
+  for (const [icon, keywords] of Object.entries(DOSAGE_ICON_MAP)) {
+    for (const keyword of keywords) {
+      if (lowerCaseDescription.includes(keyword.toLowerCase())) {
+        return icon;
+      }
+    }
+  }
+  
+  // Fallback categories
+  if (lowerCaseDescription.includes('tablet')) return 'tablet.png';
+  if (lowerCaseDescription.includes('capsule')) return 'capsule.png';
+  if (lowerCaseDescription.includes('spray')) return 'spray.png';
+  if (lowerCaseDescription.includes('powder') || lowerCaseDescription.includes('granule')) return 'powder.png';
+  if (lowerCaseDescription.includes('solution') || lowerCaseDescription.includes('liquid')) return 'syrup-solutions.png';
+  if (lowerCaseDescription.includes('ointment') || lowerCaseDescription.includes('lotion') || 
+      lowerCaseDescription.includes('cream') || lowerCaseDescription.includes('gel')) return 'cream.png';
+  if (lowerCaseDescription.includes('syrup')) return 'syrup.png';
+  
+  return DEFAULT_ICON;
+};
+
+/**
+ * Main component: DosageIcon
+ * Usage: <DosageIcon dosageDescription="Tablet" />
+ */
+export function DosageIcon({ dosageDescription, size = 32, className = '' }) {
+  const iconFilename = getIconFilename(dosageDescription);
+  const iconPath = `/icons/${iconFilename}`;
+  
+  return (
+    <div className={`flex-shrink-0 ${className}`}>
+      <Image
+        src={iconPath}
+        alt={`${dosageDescription || 'Dosage'} icon`}
+        width={size}
+        height={size}
+        className="object-contain"
+      />
+    </div>
+  );
+}
+
+/**
+ * DosageIcon with label
+ * Usage: <DosageIconWithLabel dosageDescription="Eye Drops" />
+ */
+export function DosageIconWithLabel({ dosageDescription, size = 32, showLabel = true }) {
+  return (
+    <div className="flex flex-col items-center">
+      <DosageIcon dosageDescription={dosageDescription} size={size} />
+      {showLabel && (
+        <span className="mt-1 text-xs text-gray-600 text-center max-w-[80px] truncate">
+          {dosageDescription}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * DosageIcon in a circular container (similar to avatar)
+ * Usage: <DosageIconCircle dosageDescription="Capsule" />
+ */
+export function DosageIconCircle({ dosageDescription, size = 48, bgColor = "bg-blue-50" }) {
+  const iconSize = Math.floor(size * 0.6);
+  
+  return (
+    <div className="flex-shrink-0">
+      <div className={`${bgColor} rounded-full flex items-center justify-center`} 
+           style={{ width: size, height: size }}>
+        <DosageIcon dosageDescription={dosageDescription} size={iconSize} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * DosageIcon with gradient background (similar to GetRandomAvatar)
+ * Usage: <DosageIconGradient dosageDescription="Injection" />
+ */
+export function DosageIconGradient({ dosageDescription, size = 56 }) {
+  const gradients = [
+    "from-blue-500 to-cyan-400",
+    "from-green-500 to-emerald-400",
+    "from-purple-500 to-pink-400",
+    "from-orange-500 to-amber-400",
+    "from-indigo-500 to-blue-400",
+    "from-teal-500 to-green-400",
+    "from-rose-500 to-pink-400",
+    "from-violet-500 to-purple-400",
+  ];
+  
+  // Generate consistent gradient based on dosage description
+  let hash = 0;
+  for (let i = 0; i < (dosageDescription || '').length; i++) {
+    hash = dosageDescription.charCodeAt(i) + ((hash << 10) - hash);
+  }
+  const index = Math.abs(hash) % gradients.length;
+  const iconSize = Math.floor(size * 0.5);
+  
+  return (
+    <div className="flex-shrink-0">
+      <div
+        className={`w-${size} h-${size} bg-gradient-to-br ${gradients[index]} rounded-full flex items-center justify-center shadow-lg`}
+        style={{ width: size, height: size }}
+      >
+        <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
+          <DosageIcon dosageDescription={dosageDescription} size={iconSize} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * DosageIcon in a card layout
+ * Usage: <DosageIconCard dosageDescription="Tablet" name="Paracetamol" />
+ */
+export function DosageIconCard({ dosageDescription, name, subtitle }) {
+  return (
+    <div className="flex items-center p-3 bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+      <DosageIcon dosageDescription={dosageDescription} size={40} />
+      <div className="ml-3">
+        <h4 className="font-medium text-gray-900">{name}</h4>
+        {subtitle && (
+          <p className="text-sm text-gray-600">{subtitle}</p>
+        )}
+        <span className="inline-block mt-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+          {dosageDescription}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Helper function to get icon path only
+ * Usage: const iconPath = getDosageIconPath("Tablet");
+ */
+export function getDosageIconPath(dosageDescription) {
+  const iconFilename = getIconFilename(dosageDescription);
+  return `/icons/${iconFilename}`;
+}
+
+/**
+ * Get all available icon names for debugging/reference
+ */
+export function getAvailableIcons() {
+  return Object.keys(DOSAGE_ICON_MAP);
 }

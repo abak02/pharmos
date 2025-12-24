@@ -1,4 +1,4 @@
-import { formatCurrency, formatQuantity } from "@/app/lib/utils";
+import { DosageIcon, formatCurrency, formatQuantity } from "@/app/lib/utils";
 import { fetchFilteredMedicine } from "@/app/lib/data";
 import { BuildingStorefrontIcon } from "@heroicons/react/24/outline";
 import {
@@ -189,15 +189,21 @@ export default async function MedicineTable({ query, currentPage }) {
                   >
                     {/* Medicine Details */}
                     <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-gray-900 text-sm">
-                          {medicine.brandname}
-                        </span>
-                        {medicine.dosagedescription && (
-                          <span className="text-sm text-gray-500 mt-1">
-                            {medicine.dosagedescription}
+                      <div className="flex items-center gap-2">
+                        <DosageIcon
+                          dosageDescription={medicine.dosagedescription}
+                          size={30}
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-gray-900 text-sm">
+                            {medicine.brandname}
                           </span>
-                        )}
+                          {medicine.dosagedescription && (
+                            <span className="text-sm text-gray-500 mt-1">
+                              {medicine.dosagedescription}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
 

@@ -1,15 +1,15 @@
 import { fetchShopMedicines } from "@/app/lib/data";
 import { DeleteShopMedicine, UpdateShopMedicine } from "./buttons";
-import { formatQuantity, formatCurrency } from "@/app/lib/utils";
+import { formatQuantity, formatCurrency, DosageIcon, getDosageIconPath } from "@/app/lib/utils";
 import {
   BuildingStorefrontIcon,
-  
   CubeIcon,
   BeakerIcon,
-  HashtagIcon
+  HashtagIcon,
 } from "@heroicons/react/24/outline";
 
 import StockIndicator from "./stock-indicator";
+import Image from "next/image";
 
 export default async function MedicineTable({ query, currentPage }) {
   const medicines = await fetchShopMedicines(query, currentPage);
@@ -49,15 +49,15 @@ export default async function MedicineTable({ query, currentPage }) {
                 <div className="flex items-center justify-between border-b pb-4">
                   <div>
                     <div className="mb-2 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
-                        <BeakerIcon className="h-5 w-5 text-white" />
+                      <div className="w-10 h-10  rounded-full flex items-center justify-center shadow-sm">
+                        <DosageIcon dosageDescription={med.dosagedescription} size={30} />
                       </div>
                       <div className="">
                         <p className="text-md font-semibold">{med.brandname}</p>
                         {med.dosagedescription && (
                           <div className="flex items-center gap-1 border border-gray-200 mt-2 rounded-full px-2 py-1 bg-gray-50 shadow-sm">
                             <CubeIcon className="h-4 w-4 text-gray-400" />
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-center text-gray-500">
                               {med.dosagedescription}
                             </p>
                           </div>
@@ -76,9 +76,10 @@ export default async function MedicineTable({ query, currentPage }) {
                     </p>
                     <p className="text-md font-medium text-gray-900">
                       {med.genericname || "-"}
-                      
                     </p>
-                    <p className="font-medium text-gray-600 text-sm">{med.strength}</p>
+                    <p className="font-medium text-gray-600 text-sm">
+                      {med.strength}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 font-medium">
@@ -167,9 +168,9 @@ export default async function MedicineTable({ query, currentPage }) {
                     {/* Medicine Details */}
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
-                          <BeakerIcon className="h-5 w-5 text-white" />
-                        </div>
+                        
+                          <DosageIcon dosageDescription={med.dosagedescription} size={30} />
+                        
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2  flex-wrap">
                             <h4 className="font-bold text-gray-900 text-sm truncate">
@@ -181,7 +182,9 @@ export default async function MedicineTable({ query, currentPage }) {
                               </span>
                             )}
                           </div>
-                          <span className="font-medium text-gray-600 text-sm">{med.strength}</span>
+                          <span className="font-medium text-gray-600 text-sm">
+                            {med.strength}
+                          </span>
                           <p className="text-sm text-gray-600 max-w-[250px] text-wrap">
                             {med.genericname}
                           </p>
