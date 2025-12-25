@@ -104,7 +104,7 @@ export async function createInvoice(formData, selectedMedicines) {
     status = "pending";
   }
 
-  const totalPrice = Math.ceil(parseFloat(formData.get("totalPrice")) || 0);
+  const totalPrice = (parseFloat(formData.get("totalPrice")) || 0);
   const discountedPrice = Math.ceil(
     parseFloat(formData.get("discountedPrice")) || 0
   );
