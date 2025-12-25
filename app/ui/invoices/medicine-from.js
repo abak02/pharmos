@@ -76,7 +76,7 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
 
     // Only update state if values actually changed
     if (Math.abs(discounted - discountedPrice) > 0.01) {
-      setDiscountedPrice(discounted);
+      setDiscountedPrice(Math.ceil(discounted));
     }
 
     if (Math.abs(actualDiscountAmt - discountAmount) > 0.01) {
@@ -638,6 +638,9 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                 id="discount"
                 name="discount"
                 placeholder="0"
+                onWheel={(e) => {
+                  e.target.blur();
+                }}
                 step="0.01"
                 value={discountPercentage}
                 onChange={(e) => handleDiscountChange(e.target.value)}
@@ -686,6 +689,9 @@ export default function MedicineForm({ onAddMedicine, onPriceUpdate }) {
                 type="number"
                 id="givenAmount"
                 name="givenAmount"
+                onWheel={(e) => {
+                  e.target.blur();
+                }} 
                 min="0"
                 step="1"
                 placeholder="TK"

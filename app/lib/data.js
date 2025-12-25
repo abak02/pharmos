@@ -837,7 +837,9 @@ export async function fetchInvoiceSummary(invoiceId) {
     const row = invoiceData.rows[0];
 
     // Second query for medicines to calculate subtotal
+    // Now includes BOTH database medicines AND custom items
     const medicinesData = await sql`
+      -- Database medicines from invoice_medicines
       SELECT 
         im.medicine_id as id,
         im.medicine_id,
@@ -845,11 +847,30 @@ export async function fetchInvoiceSummary(invoiceId) {
         ml.dosagedescription,
         ml.strength,
         im.quantity,
-        im.price_per_unit
+        im.price_per_unit,
+        false as is_custom,
+        'medicine' as item_type
       FROM invoice_medicines im
       JOIN medicinelist ml ON im.medicine_id = ml.id
       WHERE im.invoice_id = ${invoiceId}
-      ORDER BY ml.brandname
+      
+      UNION ALL
+      
+      -- Custom items from invoice_custom_items
+      SELECT 
+        ici.medicine_id as id,
+        ici.medicine_id,
+        ici.item_name as brandname,
+        '' as dosagedescription,
+        '' as strength,
+        ici.quantity,
+        ici.price_per_unit,
+        true as is_custom,
+        'custom' as item_type
+      FROM invoice_custom_items ici
+      WHERE ici.invoice_id = ${invoiceId}
+      
+      ORDER BY item_type, brandname
     `;
 
     // Third query for payments
@@ -866,10 +887,23 @@ export async function fetchInvoiceSummary(invoiceId) {
       ORDER BY created_at DESC
     `;
 
-    // Calculate subtotal from medicines (sum of quantity * price_per_unit)
-    const subtotalCents = medicinesData.rows.reduce((sum, medicine) => {
-      return sum + (medicine.quantity * medicine.price_per_unit);
+    // Calculate subtotal from ALL items (database medicines + custom items)
+    const subtotalCents = medicinesData.rows.reduce((sum, item) => {
+      return sum + (item.quantity * item.price_per_unit);
     }, 0);
+
+    // Calculate totals for each type
+    const medicineTotals = medicinesData.rows.reduce((acc, item) => {
+      const total = item.quantity * item.price_per_unit;
+      if (item.is_custom) {
+        acc.custom_total_cents += total;
+        acc.custom_items++;
+      } else {
+        acc.medicine_total_cents += total;
+        acc.medicine_items++;
+      }
+      return acc;
+    }, { medicine_total_cents: 0, custom_total_cents: 0, medicine_items: 0, custom_items: 0 });
 
     const processedPayments = paymentsData.rows.map(payment => ({
       ...payment,
@@ -878,9 +912,19 @@ export async function fetchInvoiceSummary(invoiceId) {
       change_amount: (payment.given_amount - payment.amount) / 100
     }));
 
-    const processedMedicines = medicinesData.rows.map(medicine => ({
-      ...medicine,
-      price_per_unit: medicine.price_per_unit / 100
+    const processedMedicines = medicinesData.rows.map(item => ({
+      ...item,
+      id: item.id,
+      medicine_id: item.medicine_id,
+      name: item.brandname, // For consistent naming in UI
+      brandname: item.brandname,
+      dosagedescription: item.dosagedescription || '',
+      strength: item.strength || '',
+      quantity: item.quantity,
+      price_per_unit: item.price_per_unit / 100,
+      total_price: (item.quantity * item.price_per_unit) / 100,
+      is_custom: item.is_custom,
+      item_type: item.item_type
     }));
 
     // Convert cents to Taka
@@ -915,12 +959,19 @@ export async function fetchInvoiceSummary(invoiceId) {
       remaining_amount: remainingAmount,
       payment_count: parseInt(row.payment_count) || 0,
       payments: processedPayments,
-      medicines: processedMedicines,
+      medicines: processedMedicines, // Changed from 'medicines' to 'items' to include both types
       latest_given_amount: processedPayments.length > 0 ? processedPayments[0].given_amount : 0,
       
       // New fields for proper display
       subtotal, // Original total before discount
       discount_percentage: discountPercentage,
+      
+      // Item type breakdown
+      medicine_total: medicineTotals.medicine_total_cents / 100,
+      custom_total: medicineTotals.custom_total_cents / 100,
+      medicine_items: medicineTotals.medicine_items,
+      custom_items: medicineTotals.custom_items,
+      total_items: medicineTotals.medicine_items + medicineTotals.custom_items,
       
       // Helper fields for calculations
       is_paid: row.status === 'paid',
@@ -932,7 +983,7 @@ export async function fetchInvoiceSummary(invoiceId) {
       calculated_final_amount: amount, // Final amount after discount (rounded up)
       
       // For display in EditInvoiceForm
-      original_subtotal: subtotal, // Sum of all medicines
+      original_subtotal: subtotal, // Sum of all items (medicines + custom)
       applied_discount: discountedAmount, // How much was discounted
       final_amount_rounded: amount // The final amount stored (rounded up)
     };
