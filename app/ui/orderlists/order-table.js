@@ -185,7 +185,9 @@ export default function OrderTable({ medicines, manufacturer }) {
               >
                 <td className="px-6 py-4">
                   <div>
-                    <div className="text-sm font-medium text-gray-900">{med.brandname}</div>
+                    <div className="text-sm font-medium text-gray-900">{med.brandname} <span className="text-xs text-gray-600">
+                              {med.strength}
+                            </span></div>
                     {med.dosagedescription && (
                       <div className="text-sm text-gray-500">{med.dosagedescription}</div>
                     )}

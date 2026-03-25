@@ -412,11 +412,11 @@ export default function EditInvoiceForm({ invoiceSummary }) {
                 <div className="hidden md:flex justify-between items-center">
                   <div className="flex items-center gap-3 text-sm flex-1">
                     <span className="font-medium text-gray-900 min-w-0 flex-1">
-                      {medicine.brandname}
-                    </span>
-                    <span className="text-xs text-gray-600 ml-1">
+                      {medicine.brandname} <span className="text-xs text-gray-600 ml-1">
                       {medicine.strength}
                     </span> 
+                    </span>
+                    
                     {medicine.dosagedescription && (
                       <span className="text-xs text-gray-500 flex-shrink-0">
                         ({medicine.dosagedescription})
