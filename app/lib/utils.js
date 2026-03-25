@@ -377,7 +377,7 @@ const getIconFilename = (dosageDescription) => {
  * Main component: DosageIcon
  * Usage: <DosageIcon dosageDescription="Tablet" />
  */
-export function DosageIcon({ dosageDescription, size = 32, className = '' }) {
+export function DosageIcon({ dosageDescription, size = 24, className = '' }) {
   const iconFilename = getIconFilename(dosageDescription);
   const iconPath = `/icons/${iconFilename}`;
   
@@ -398,7 +398,7 @@ export function DosageIcon({ dosageDescription, size = 32, className = '' }) {
  * DosageIcon with label
  * Usage: <DosageIconWithLabel dosageDescription="Eye Drops" />
  */
-export function DosageIconWithLabel({ dosageDescription, size = 32, showLabel = true }) {
+export function DosageIconWithLabel({ dosageDescription, size = 24, showLabel = true }) {
   return (
     <div className="flex flex-col items-center">
       <DosageIcon dosageDescription={dosageDescription} size={size} />

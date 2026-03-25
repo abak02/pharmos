@@ -50,7 +50,7 @@ function StockIndicator({ quantity }) {
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${bgColor} ${color} `}
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${bgColor} ${color} `}
     >
       <span className={`w-2 h-2 ${animation} rounded-full ${dotColor}`}></span>
       {getStockText()}
@@ -192,7 +192,7 @@ export default async function MedicineTable({ query, currentPage }) {
                       <div className="flex items-center gap-2">
                         <DosageIcon
                           dosageDescription={medicine.dosagedescription}
-                          size={30}
+                          size={24}
                         />
                         <div className="flex flex-col">
                           <span className="font-semibold text-gray-900 text-sm">

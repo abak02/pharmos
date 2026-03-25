@@ -251,7 +251,7 @@
 const { db } = require('@vercel/postgres');
 
 async function upsertMedicineData() {
-  const { medicineList } = require('../app/lib/medicines_with_manufacturer_ids.js');
+  const { medicineList } = require('../app/lib/medicines.js');
   
   // Resume logic - change this to continue from where it failed
   const startIndex = 0; // Set this to the last successful index + 1

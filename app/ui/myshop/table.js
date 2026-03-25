@@ -169,7 +169,7 @@ export default async function MedicineTable({ query, currentPage }) {
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3 min-w-0">
                         
-                          <DosageIcon dosageDescription={med.dosagedescription} size={30} />
+                          <DosageIcon dosageDescription={med.dosagedescription} size={24} />
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2  flex-wrap">
