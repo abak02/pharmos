@@ -174,7 +174,9 @@ export default async function MedicineTable({ query, currentPage }) {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2  flex-wrap">
                             <h4 className="font-bold text-gray-900 text-sm truncate">
-                              {med.brandname}
+                              {med.brandname} <span className="font-medium text-gray-600 text-sm truncate max-w-[50px]">
+                            {med.strength}
+                          </span>
                             </h4>
                             {med.dosagedescription && (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border flex-shrink-0">
@@ -182,9 +184,7 @@ export default async function MedicineTable({ query, currentPage }) {
                               </span>
                             )}
                           </div>
-                          <span className="font-medium text-gray-600 text-sm">
-                            {med.strength}
-                          </span>
+                          
                           <p className="text-sm text-gray-600 max-w-[250px] text-wrap">
                             {med.genericname}
                           </p>
